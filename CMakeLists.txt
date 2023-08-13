@@ -1,7 +1,0 @@
-cmake_minimum_required(VERSION 3.26.0)
-project(YEngine)
-add_executable(${PROJECT_NAME})
-target_include_directories(${PROJECT_NAME} PRIVATE "C:/VulkanSDK/1.3.250.1/Include")
-target_link_directories(${PROJECT_NAME} PRIVATE "C:/VulkanSDK/1.3.250.1/Lib")
-add_subdirectory(source)
-target_link_libraries(${PROJECT_NAME} glfw vulkan-1)
