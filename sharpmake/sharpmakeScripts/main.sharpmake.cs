@@ -80,6 +80,7 @@ class YEngineProject : BaseSimpleLibraryProject
         conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
         conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
         conf.LibraryFiles.Add("vulkan-1.lib");
+        conf.Options.Add(Options.Vc.Compiler.CppLanguageStandard.CPP20);
     }
 }
 
@@ -112,6 +113,7 @@ class ThirdPartyProject: BaseSimpleLibraryProject
         {
             conf.Output = Configuration.OutputType.Lib;
         }
+        conf.Options.Add(Sharpmake.Options.Vc.Compiler.CppLanguageStandard.CPP20);
     }
 
 }
@@ -137,6 +139,7 @@ public class SandboxProject: Project
         // Specify where the generated project will be. Here we generate the
         // vcxproj in a /generated directory.
         conf.ProjectPath = @"[project.SourceRootPath]";
+        conf.Options.Add(Sharpmake.Options.Vc.Compiler.CppLanguageStandard.CPP20);
     }
 
     [Configure]

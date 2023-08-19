@@ -6,6 +6,8 @@
 #include <stdexcept>
 #include <cstdlib>
 
+#include"VulkanInstance.h"
+
 class HelloTriangleApplication {
 public:
 	static const constexpr uint32_t WIDTH = 800;
@@ -27,7 +29,7 @@ private:
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan window", nullptr, nullptr);
 	}
 	void initVulkan() {
-
+		VulkanInstance::InitVulkan();
 	}
 
 	void mainLoop() 
@@ -39,6 +41,7 @@ private:
 
 	void cleanup() {
 
+		VulkanInstance::DestroyVulkan();
 		glfwDestroyWindow(window); 
 		glfwTerminate();
 	}
