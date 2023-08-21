@@ -7,6 +7,9 @@ class VulkanInstance
 public:
 	static void InitVulkan();
 	static void DestroyVulkan();
+	static VkInstance GetInstance() { return instance; }
+	static const bool s_enableValidationLayers;
+	static inline const std::vector<const char*> s_validationLayers = { "VK_LAYER_KHRONOS_validation" };
 private:
 	static void CreateInstance();
 	static void DestroyInstance();
@@ -15,11 +18,7 @@ private:
 	static bool CheckValidationLayerSupport();
 	static std::vector<const char*> getRequiredExtensions();
 	
-	static const bool enableValidationLayers;
-	static VkInstance instance;
 	static inline VkDebugUtilsMessengerEXT debugMessenger;
-	static inline const std::vector<const char*> validationLayers = {
-		"VK_LAYER_KHRONOS_validation"
-	};
+	static VkInstance instance;
 };
 

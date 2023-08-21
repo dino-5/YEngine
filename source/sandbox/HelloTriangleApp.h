@@ -7,6 +7,8 @@
 #include <cstdlib>
 
 #include"VulkanInstance.h"
+#include "Device.h"
+#include "Surface.h"
 
 class HelloTriangleApplication {
 public:
@@ -30,6 +32,9 @@ private:
 	}
 	void initVulkan() {
 		VulkanInstance::InitVulkan();
+		m_surface.Init(window);
+		m_physicalDevice.Init(m_surface.GetSurface());
+		m_logicalDevice.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface());
 	}
 
 	void mainLoop() 
@@ -40,7 +45,8 @@ private:
 	}
 
 	void cleanup() {
-
+		m_logicalDevice.Destroy();
+		m_surface.Destroy();
 		VulkanInstance::DestroyVulkan();
 		glfwDestroyWindow(window); 
 		glfwTerminate();
@@ -48,5 +54,8 @@ private:
 
 private:
 	GLFWwindow* window;
+	PhysicalDevice m_physicalDevice;
+	LogicalDevice m_logicalDevice;
+	Surface m_surface;
 };
 

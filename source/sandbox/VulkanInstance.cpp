@@ -7,7 +7,7 @@
 VkInstance VulkanInstance::instance;
 
 #ifdef _DEBUG
-	const bool VulkanInstance::enableValidationLayers = true;
+	const bool VulkanInstance::s_enableValidationLayers = true;
 #else
 	const bool VulkanInstance::enableValidationLayers = false;
 #endif
@@ -51,7 +51,7 @@ std::vector<const char*> VulkanInstance::getRequiredExtensions()
 
 	std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
 
-	if (enableValidationLayers) {
+	if (s_enableValidationLayers) {
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
 
@@ -61,7 +61,7 @@ std::vector<const char*> VulkanInstance::getRequiredExtensions()
 void VulkanInstance::InitVulkan()
 {
 	CreateInstance();
-	if (enableValidationLayers)
+	if (s_enableValidationLayers)
 	{
 		SetupDebugMessenger();
 	}
@@ -86,7 +86,7 @@ void VulkanInstance::SetupDebugMessenger()
 
 void VulkanInstance::CreateInstance()
 {
-	if (enableValidationLayers && !CheckValidationLayerSupport())
+	if (s_enableValidationLayers && !CheckValidationLayerSupport())
 	{
 		throw std::runtime_error("validation layers requested, but not available");
 	}
@@ -110,10 +110,10 @@ void VulkanInstance::CreateInstance()
 	createInfo.ppEnabledExtensionNames = extensions.data();
 
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
-	if (enableValidationLayers)
+	if (s_enableValidationLayers)
 	{
-		createInfo.enabledLayerCount= static_cast<uint32_t>(validationLayers.size());
-		createInfo.ppEnabledLayerNames = validationLayers.data();
+		createInfo.enabledLayerCount= static_cast<uint32_t>(s_validationLayers.size());
+		createInfo.ppEnabledLayerNames = s_validationLayers.data();
 
 		populateDebugMessengerCreateInfo(debugCreateInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
@@ -138,7 +138,7 @@ bool VulkanInstance::CheckValidationLayerSupport()
 	std::vector<VkLayerProperties> availableLayers(layerCount);
 	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 	
-	for (const char* layerName : validationLayers)
+	for (const char* layerName : s_validationLayers)
 	{
 		bool layerFound = false;
 		for (const VkLayerProperties& layer : availableLayers)
@@ -164,9 +164,9 @@ void VulkanInstance::DestroyVulkan()
 
 void VulkanInstance::DestroyDebugMessenger()
 {
-	if (enableValidationLayers)
+	if (s_enableValidationLayers)
 	{
-		//DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 	}
 }
 
