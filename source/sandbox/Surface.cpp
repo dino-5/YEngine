@@ -20,7 +20,7 @@ void Surface::Init(GLFWwindow* window)
 		throw std::runtime_error("failed to create surface");
 }
 
-void Surface::Destroy()
+void Surface::Release()
 {
 	vkDestroySurfaceKHR(VulkanInstance::GetInstance(), m_surface, nullptr);
 }

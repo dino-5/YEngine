@@ -1,10 +1,15 @@
-#include "Device.h"
-#include "VulkanInstance.h"
-#include "Queue.h"
+#include <algorithm>
 #include <stdexcept>
 #include <format>
 #include <iostream>
 #include <set>
+#include <vector>
+#include <string>
+#include <GLFW/glfw3.h>
+#include "Device.h"
+#include "VulkanInstance.h"
+#include "Queue.h"
+#include "SwapChain.h"
 
 VkPhysicalDeviceProperties GetPhysicalDeviceProperties(const VkPhysicalDevice& device)
 {
@@ -20,6 +25,23 @@ VkPhysicalDeviceFeatures GetPhysicalDeviceFeatures(const VkPhysicalDevice& devic
 	return features;
 }
 
+bool CheckDeviceExtensionSupport(VkPhysicalDevice device)
+{
+	uint32_t extensionNumSupport;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionNumSupport, nullptr);
+
+	std::vector<VkExtensionProperties> availableDeviceExtensions(extensionNumSupport);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionNumSupport, availableDeviceExtensions.data());
+
+	std::set<std::string> requiredExtensions(PhysicalDevice::s_requiredDeviceExtensions.begin(), 
+		PhysicalDevice::s_requiredDeviceExtensions.end());
+	for (const auto& extension : availableDeviceExtensions)
+	{
+		requiredExtensions.erase(extension.extensionName);
+	}
+	return requiredExtensions.empty();
+}
+
 bool isPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	VkPhysicalDeviceProperties properties = GetPhysicalDeviceProperties(device);
 
@@ -27,7 +49,14 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
 	QueueFamilyIndices indices = FindQueueFamilies(device, surface);
 
-	return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && features.geometryShader && indices.IsComplete();
+	bool isRequiredExtensionsSupported = CheckDeviceExtensionSupport(device);
+
+	bool isSwapChainSuitable = false;
+	if (isRequiredExtensionsSupported)
+		isSwapChainSuitable = QuerySwapChainSupport(device, surface).isSuitable();
+
+	return isRequiredExtensionsSupported && properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+		&& features.geometryShader && indices.IsComplete() && isSwapChainSuitable;
 }
 
 
@@ -65,6 +94,7 @@ void PhysicalDevice::Init(VkSurfaceKHR surface)
 		throw std::runtime_error("no suitable devices were found");
 }
 
+
 void LogicalDevice::Init(VkPhysicalDevice& physicalDevice, VkSurfaceKHR surface)
 {
 	QueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
@@ -91,7 +121,10 @@ void LogicalDevice::Init(VkPhysicalDevice& physicalDevice, VkSurfaceKHR surface)
 
 	VkPhysicalDeviceFeatures deviceFeatures = GetPhysicalDeviceFeatures(physicalDevice);
 	deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
-	deviceCreateInfo.enabledExtensionCount = 0;
+	//extension
+	deviceCreateInfo.ppEnabledExtensionNames = PhysicalDevice::s_requiredDeviceExtensions.data();
+	deviceCreateInfo.enabledExtensionCount = PhysicalDevice::s_requiredDeviceExtensions.size();
+
 	if (VulkanInstance::s_enableValidationLayers)
 	{
 		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(VulkanInstance::s_validationLayers.size());

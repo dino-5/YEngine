@@ -7,8 +7,8 @@ class Surface
 {
 public:
 	void Init(GLFWwindow* window);
-	void Destroy();
-	VkSurfaceKHR GetSurface() { return m_surface; }
+	void Release();
+	VkSurfaceKHR& GetSurface() { return m_surface; }
 private:
 	VkSurfaceKHR m_surface;
 };

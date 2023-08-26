@@ -1,25 +1,29 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <vector>
 
 class PhysicalDevice
 {
 public:
+	static const inline std::vector<const char*> s_requiredDeviceExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
 	void Init(VkSurfaceKHR surface);
 	VkPhysicalDevice& GetDevice() { return m_device; }
 private:
 	VkPhysicalDevice m_device = nullptr;
 };
 
-
 class LogicalDevice
 {
 public:
 	void Init(VkPhysicalDevice& physicalDevice, VkSurfaceKHR surface);
-	void Destroy()
+	void Release()
 	{
 
 		vkDestroyDevice(m_device, nullptr);
 	}
+	VkDevice& GetDevice() { return m_device; }
 
 private:
 	VkQueue m_graphicsQueue;
