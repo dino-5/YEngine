@@ -6,18 +6,14 @@
 
 
 std::vector<char> ReadFile(const std::string& filename)
-//std::vector<uint32_t> ReadFile(const std::string& filename)
 {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 	if (!file.is_open())
 		throw std::runtime_error("failed to open file!");
 	size_t fileSize = (size_t)file.tellg();
 	std::vector<char> buffer(fileSize);
-	//std::vector<uint32_t> buffer(Ceiling(fileSize, sizeof(uint32_t)));
 	file.seekg(0);
 	file.read(buffer.data(), fileSize);
-	//file.seekg(0);
-	//file.read(reinterpret_cast<char*>(buffer.data()), fileSize);
 	file.close();
 	return buffer;
 }
@@ -31,13 +27,10 @@ VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device)
 {
 	VkShaderModule m_shader;
 	std::vector<char> shaderByteCode = ReadFile(shaderFileName);
-	//std::vector<uint32_t> shaderByteCode = ReadFile(shaderFileName);
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = GetNumberDividedBy4(shaderByteCode.size());
-	//shaderByteCode.resize(GetNumberDividedBy4(shaderByteCode.size()));
 	createInfo.pCode = reinterpret_cast<uint32_t*>(shaderByteCode.data());
-	//createInfo.pCode = shaderByteCode.data();
 	createInfo.flags = 0;
 	createInfo.pNext = nullptr;
 
@@ -58,7 +51,7 @@ VkPipelineShaderStageCreateInfo CreateShaderStageInfo(VkShaderModule shaderModul
 	return ShaderStageInfo;
 }
 
-void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageFormat)
+void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageFormat, VkRenderPass& renderPass)
 {
 	m_device = &device;
 	m_vertexShader = CreateShader("shaders/bin/vert.spv", device);
@@ -147,7 +140,6 @@ void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageF
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) 
 		throw std::runtime_error("failed to create pipeline layout!");
 
-	m_renderPass.Init(device, imageFormat);
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -162,7 +154,7 @@ void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageF
 	pipelineCreateInfo.pColorBlendState = &colorBlending;
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 	pipelineCreateInfo.layout = m_pipelineLayout;
-	pipelineCreateInfo.renderPass = m_renderPass.GetRenderPass();
+	pipelineCreateInfo.renderPass = renderPass;
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	pipelineCreateInfo.basePipelineIndex = -1; // Optional

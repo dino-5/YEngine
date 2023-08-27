@@ -113,7 +113,20 @@ void SwapChain::Init(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevi
 
 	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS)
 		throw std::runtime_error("failed to create swap chain");
+
+	m_renderPass.Init(device, m_surfaceFormat.format);
 	CreateSwapChainImages(device);
+	CreateFrameBuffers();
+
+	s_viewport.x = 0.0f;
+	s_viewport.y = 0.0f;
+	s_viewport.width = static_cast<float>(m_extent.width);
+	s_viewport.height = static_cast<float>(m_extent.height);
+	s_viewport.minDepth = 0.0f;
+	s_viewport.maxDepth = 1.0f;
+
+	s_scissorRect.offset = { 0, 0 };
+	s_scissorRect.extent = m_extent;
 }
 
 void SwapChain::CreateSwapChainImages(VkDevice device)
@@ -143,4 +156,38 @@ void SwapChain::CreateSwapChainImages(VkDevice device)
 			throw std::runtime_error("failed to create image views!");
 		}
 	}
+}
+
+void SwapChain::CreateFrameBuffers()
+{
+	m_frameBuffers.resize(m_imageViews.size());
+	for (size_t i = 0; i < m_imageViews.size(); i++)
+	{
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = m_renderPass.GetRenderPass();
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = &m_imageViews[i];
+		framebufferInfo.width = m_extent.width;
+		framebufferInfo.height = m_extent.height;
+		framebufferInfo.layers = 1;
+
+		if (vkCreateFramebuffer(*m_device, &framebufferInfo, nullptr, &m_frameBuffers[i]) != VK_SUCCESS) {
+			throw std::runtime_error("failed to create framebuffer!");
+		}
+	}
+}
+
+
+VkRenderPassBeginInfo SwapChain::GetRenderPassInfo(uint32_t index)
+{
+	VkRenderPassBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	beginInfo.renderPass = m_renderPass.GetRenderPass();
+	beginInfo.framebuffer = m_frameBuffers[index];
+	beginInfo.renderArea.offset = { 0, 0 };
+	beginInfo.renderArea.extent = m_extent;
+	beginInfo.clearValueCount = 1;
+	beginInfo.pClearValues = &s_clearColor;
+	return beginInfo;
 }

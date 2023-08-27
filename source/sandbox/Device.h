@@ -24,6 +24,8 @@ public:
 		vkDestroyDevice(m_device, nullptr);
 	}
 	VkDevice& GetDevice() { return m_device; }
+	VkQueue& GetGraphicsQueue() { return m_graphicsQueue; }
+	VkQueue& GetPresentationQueue() { return m_presentQueue; }
 
 private:
 	VkQueue m_graphicsQueue;

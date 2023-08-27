@@ -5,7 +5,6 @@
 #include "RenderPass.h"
 
 std::vector<char> ReadFile(const std::string& filename);
-//std::vector<uint32_t> ReadFile(const std::string& filename);
 VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device);
 
 enum class ShaderType
@@ -17,7 +16,7 @@ enum class ShaderType
 class GraphicsPipeline
 {
 public:
-	void Init(VkDevice& device, VkExtent2D extent, VkFormat imageFormat);
+	void Init(VkDevice& device, VkExtent2D extent, VkFormat imageFormat, VkRenderPass& renderPass);
 	void Release()
 	{
 		vkDestroyShaderModule(*m_device, m_vertexShader, nullptr);
@@ -25,8 +24,8 @@ public:
 
 		vkDestroyPipelineLayout(*m_device, m_pipelineLayout, nullptr);
 		vkDestroyPipeline(*m_device, m_pipeline, nullptr);
-		m_renderPass.Release();
 	}
+	VkPipeline& GetPipeline() { return m_pipeline; }
 
 private:
 	VkShaderModule m_vertexShader;
@@ -34,6 +33,5 @@ private:
 	VkDevice* m_device;
 	VkPipelineLayout m_pipelineLayout;
 	VkPipeline m_pipeline;
-	RenderPass m_renderPass;
 };
 
