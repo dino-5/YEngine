@@ -13,6 +13,8 @@
 #include "GraphicsPipeline.h"
 #include "CommandPool.h"
 #include "CommandBuffer.h"
+#include "Buffers.h"
+#include "Geometry.h"
 
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -62,6 +64,13 @@ private:
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 			m_cmdBuffer.Init(m_logicalDevice.GetDevice(), m_pool.GetPool());
 		createSyncObjects();
+		m_vertices = Geometry::GetDefaultVertices();
+		m_vertexBuffer.InitAsVertexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+			m_logicalDevice.GetGraphicsQueue(),m_vertices.size() * sizeof(Geometry::Vertex), m_vertices.data());
+		m_indices= Geometry::GetDefaultIndices();
+		m_indexBuffer.InitAsIndexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+			m_logicalDevice.GetGraphicsQueue(),m_indices.size() * sizeof(Geometry::IndexType), m_indices.data());
+
 	}
 
 	void createSyncObjects()
@@ -106,7 +115,10 @@ private:
 		m_cmdBuffer.BindGraphicsPipeline(m_pipeline.GetPipeline(), m_currentFrame);
 		m_cmdBuffer.SetViewport(SwapChain::GetViewport(), m_currentFrame);
 		m_cmdBuffer.SetScissorRect(SwapChain::GetScissorRect(), m_currentFrame);
-		m_cmdBuffer.Draw(m_currentFrame);
+		VkDeviceSize offsets[] = { 0 };
+		m_cmdBuffer.BindVertexBuffers(m_currentFrame, &m_vertexBuffer.GetBuffer(), offsets, 1);
+		m_cmdBuffer.BindIndexBuffers(m_currentFrame, m_indexBuffer.GetBuffer());
+		m_cmdBuffer.DrawIndexed(m_currentFrame, m_indices.size());
 		m_cmdBuffer.EndRenderPass(m_currentFrame);
 
 		VkSubmitInfo submitInfo{};
@@ -139,6 +151,8 @@ private:
 	}
 
 	void cleanup() {
+		m_indexBuffer.Release();
+		m_vertexBuffer.Release();
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 
@@ -166,6 +180,10 @@ private:
 	GraphicsPipeline m_pipeline;
 	CommandPool m_pool;
 	CommandBuffer m_cmdBuffer;
+	Buffer m_vertexBuffer;
+	Buffer m_indexBuffer;
+	std::vector<Geometry::Vertex> m_vertices;
+	std::vector<Geometry::IndexType> m_indices;
 	std::vector<VkSemaphore> m_imageAvailableSemph;
 	std::vector<VkSemaphore> m_renderFinishedSemph;
 	std::vector<VkFence> m_inFlightFence;

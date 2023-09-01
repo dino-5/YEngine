@@ -3,6 +3,7 @@
 
 #include "GraphicsPipeline.h"
 #include "math.h"
+#include "Geometry.h"
 
 
 std::vector<char> ReadFile(const std::string& filename)
@@ -71,12 +72,14 @@ void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageF
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
 	dynamicState.pDynamicStates = dynamicStates.data();
 
+	auto bindingDescription = Geometry::Vertex::GetBindingDescription();
+	auto attributesDescription = Geometry::Vertex::GetAttributeDescriptions();
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	vertexInputInfo.vertexBindingDescriptionCount = 0;
-	vertexInputInfo.pVertexBindingDescriptions = nullptr; // Optional
-	vertexInputInfo.vertexAttributeDescriptionCount = 0;
-	vertexInputInfo.pVertexAttributeDescriptions = nullptr; // Optional
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription; // Optional
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributesDescription.size());
+	vertexInputInfo.pVertexAttributeDescriptions = attributesDescription.data(); // Optional
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
