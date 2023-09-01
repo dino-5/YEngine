@@ -4,6 +4,8 @@
 #include "SwapChain.h"
 #include "Queue.h"
 
+const int MAX_FRAMES_IN_FLIGHT = 2;
+
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	SwapChainSupportDetails details;
@@ -67,31 +69,42 @@ VkExtent2D ChooseSwapExtent(GLFWwindow* window, VkSurfaceCapabilitiesKHR& capabi
 	return actualExtent;
 }
 
-void SwapChain::Init(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevice& device, VkSurfaceKHR surface)
+void SwapChain::QuerySwapChainProperties()
 {
-	m_device = &device;
+	m_swapChainSupport = QuerySwapChainSupport(*m_physicalDevice, *m_surface);
 
-	SwapChainSupportDetails swapChainSupport = QuerySwapChainSupport(physicalDevice, surface);
+	m_presentMode = ChooseSwapPresentMode(m_swapChainSupport.presentModes);
+	m_surfaceFormat  = ChooseSwapSurfaceFormat(m_swapChainSupport.formats);
+	m_extent = ChooseSwapExtent(m_window, m_swapChainSupport.capabilities);
 
-	VkPresentModeKHR presentMode = ChooseSwapPresentMode(swapChainSupport.presentModes);
-	m_surfaceFormat                = ChooseSwapSurfaceFormat(swapChainSupport.formats);
-	m_extent                       = ChooseSwapExtent(window, swapChainSupport.capabilities);
+	s_viewport.x = 0.0f;
+	s_viewport.y = 0.0f;
+	s_viewport.width = static_cast<float>(m_extent.width);
+	s_viewport.height = static_cast<float>(m_extent.height);
+	s_viewport.minDepth = 0.0f;
+	s_viewport.maxDepth = 1.0f;
+
+	s_scissorRect.offset = { 0, 0 };
+	s_scissorRect.extent = m_extent;
 	 
-	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
-		imageCount = swapChainSupport.capabilities.maxImageCount;
+	m_imageCount = m_swapChainSupport.capabilities.minImageCount + 1;
+	if (m_swapChainSupport.capabilities.maxImageCount > 0 && m_imageCount > m_swapChainSupport.capabilities.maxImageCount)
+		m_imageCount = m_swapChainSupport.capabilities.maxImageCount;
+}
 
+void SwapChain::CreateSwapChain()
+{
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	createInfo.surface = surface;
-	createInfo.minImageCount = imageCount;
+	createInfo.surface = *m_surface;
+	createInfo.minImageCount = m_imageCount;
 	createInfo.imageFormat = m_surfaceFormat.format;
 	createInfo.imageColorSpace = m_surfaceFormat.colorSpace;
 	createInfo.imageExtent = m_extent;
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	QueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
+	QueueFamilyIndices indices = FindQueueFamilies(*m_physicalDevice, *m_surface);
 	uint32_t QueueFamilyIndices[] = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 	if (indices.graphicsFamily != indices.presentFamily)
 	{
@@ -105,28 +118,23 @@ void SwapChain::Init(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevi
 		createInfo.queueFamilyIndexCount = 0;
 		createInfo.pQueueFamilyIndices = nullptr;
 	}
-	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+	createInfo.preTransform = m_swapChainSupport.capabilities.currentTransform;
 	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-	createInfo.presentMode = presentMode;
+	createInfo.presentMode = m_presentMode;
 	createInfo.clipped = VK_TRUE;
 	createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS)
+	if (vkCreateSwapchainKHR(*m_device, &createInfo, nullptr, &m_swapChain) != VK_SUCCESS)
 		throw std::runtime_error("failed to create swap chain");
+}
 
-	m_renderPass.Init(device, m_surfaceFormat.format);
-	CreateSwapChainImages(device);
-	CreateFrameBuffers();
-
-	s_viewport.x = 0.0f;
-	s_viewport.y = 0.0f;
-	s_viewport.width = static_cast<float>(m_extent.width);
-	s_viewport.height = static_cast<float>(m_extent.height);
-	s_viewport.minDepth = 0.0f;
-	s_viewport.maxDepth = 1.0f;
-
-	s_scissorRect.offset = { 0, 0 };
-	s_scissorRect.extent = m_extent;
+void SwapChain::Init(GLFWwindow* window, VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface)
+{
+	m_device = &device;
+	m_physicalDevice= &physicalDevice;
+	m_window = window;
+	m_surface = &surface;
+	Create();
 }
 
 void SwapChain::CreateSwapChainImages(VkDevice device)

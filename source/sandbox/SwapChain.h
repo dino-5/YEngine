@@ -5,7 +5,6 @@
 #include "RenderPass.h"
 
 struct GLFWwindow;
-
 struct SwapChainSupportDetails {
 	VkSurfaceCapabilitiesKHR capabilities;
 	std::vector<VkSurfaceFormatKHR> formats;
@@ -14,13 +13,29 @@ struct SwapChainSupportDetails {
 	bool isSuitable() { return !formats.empty() && !presentModes.empty(); }
 };
 
+extern const int MAX_FRAMES_IN_FLIGHT;
+
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 class SwapChain
 {
 public:
 
-	void Init(GLFWwindow* window, VkPhysicalDevice physicalDevice, VkDevice& device, VkSurfaceKHR surface);
+	void Init(GLFWwindow* window, VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface);
+	void Reset()
+	{
+		vkDeviceWaitIdle(*m_device);
+		Release();
+		Create();
+	}
+	void Create()
+	{
+		QuerySwapChainProperties();
+		CreateSwapChain();
+		CreateSwapChainImages(*m_device);
+		m_renderPass.Init(*m_device, m_surfaceFormat.format);
+		CreateFrameBuffers();
+	}
 	void Release()
 	{
 		m_renderPass.Release();
@@ -33,12 +48,21 @@ public:
 		vkDestroySwapchainKHR(*m_device, m_swapChain, nullptr);
 	}
 
-	uint32_t GetCurrentFrameBufferIndex(VkSemaphore& semaphore)
+	int GetCurrentFrameBufferIndex(VkSemaphore& semaphore)
 	{
 		uint32_t index;
-		vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &index);
+		VkResult result = vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &index);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_isResized)
+		{
+			m_isResized = false;
+			Reset();
+			return -1;
+		}
+		else if (result != VK_SUCCESS)
+			throw std::runtime_error("failed to acquire swap chain image");
 		return index;
 	}
+	void SetIsResized(bool fl) { m_isResized = true; }
 	VkSwapchainKHR& GetSwapChain() { return m_swapChain; }
 	VkRenderPassBeginInfo GetRenderPassInfo(uint32_t index);
 	VkFormat GetFormat() { return m_surfaceFormat.format; }
@@ -52,7 +76,10 @@ public:
 		return s_scissorRect;
 	}
 private:
+	void QuerySwapChainProperties();
 	void CreateSwapChainImages(VkDevice device);
+	void CreateSwapChain();
+	void ConfigureViewport();
 	void CreateFrameBuffers();
 
 private:
@@ -61,11 +88,18 @@ private:
 	static inline VkRect2D s_scissorRect{};
 	VkSwapchainKHR m_swapChain;
 	VkDevice* m_device;
+	VkPhysicalDevice* m_physicalDevice;
+	VkSurfaceKHR* m_surface;
+	GLFWwindow* m_window;
 	std::vector<VkImage> m_images;
 	std::vector<VkImageView> m_imageViews;
 	std::vector<VkFramebuffer> m_frameBuffers;
+	SwapChainSupportDetails m_swapChainSupport;
+	VkPresentModeKHR m_presentMode;
 	VkSurfaceFormatKHR m_surfaceFormat;
 	VkExtent2D m_extent;
 	RenderPass m_renderPass;
+	uint32_t m_imageCount = 0;
+	bool m_isResized = false;
 };
 
