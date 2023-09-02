@@ -13,7 +13,7 @@ struct SwapChainSupportDetails {
 	bool isSuitable() { return !formats.empty() && !presentModes.empty(); }
 };
 
-extern const int MAX_FRAMES_IN_FLIGHT;
+const constexpr int MAX_FRAMES_IN_FLIGHT =2 ;
 
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 
@@ -35,6 +35,9 @@ public:
 		CreateSwapChainImages(*m_device);
 		m_renderPass.Init(*m_device, m_surfaceFormat.format);
 		CreateFrameBuffers();
+	}
+	float GetAspectRatio() {
+		return m_extent.width / m_extent.height;
 	}
 	void Release()
 	{
@@ -64,7 +67,7 @@ public:
 	}
 	void SetIsResized(bool fl) { m_isResized = true; }
 	VkSwapchainKHR& GetSwapChain() { return m_swapChain; }
-	VkRenderPassBeginInfo GetRenderPassInfo(uint32_t index);
+	VkRenderPassBeginInfo GetRenderPassBeginInfo(uint32_t index);
 	VkFormat GetFormat() { return m_surfaceFormat.format; }
 	VkExtent2D GetExtent() { return m_extent; }
 	VkRenderPass& GetRenderPass(){ return m_renderPass.GetRenderPass(); }

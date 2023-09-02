@@ -13,10 +13,12 @@ enum class ShaderType
 	FRAGMENT
 };
 
+class SwapChain;
+
 class GraphicsPipeline
 {
 public:
-	void Init(VkDevice& device, VkExtent2D extent, VkFormat imageFormat, VkRenderPass& renderPass);
+	void Init(VkDevice& device, SwapChain& swapChain, VkDescriptorSetLayout* layouts, uint32_t layoutsCount);
 	void Release()
 	{
 		vkDestroyShaderModule(*m_device, m_vertexShader, nullptr);
@@ -26,6 +28,7 @@ public:
 		vkDestroyPipeline(*m_device, m_pipeline, nullptr);
 	}
 	VkPipeline& GetPipeline() { return m_pipeline; }
+	VkPipelineLayout& GetPipelineLayout() { return m_pipelineLayout; }
 
 private:
 	VkShaderModule m_vertexShader;

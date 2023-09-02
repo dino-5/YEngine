@@ -100,6 +100,7 @@ class ThirdPartyProject: BaseSimpleLibraryProject
     {
         base.ConfigureAll(conf, target);
         conf.IncludePaths.Add(@"[project.SourceRootPath]/..");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/stb_image");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glfw/include");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glm");
         conf.LibraryFiles.Add("glfw3_mt"); // glfw3_mt for multi thread debuging

@@ -1,10 +1,14 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
+#include <array>
+#include <chrono>
 
 #include "VulkanInstance.h"
 #include "Device.h"
@@ -15,8 +19,27 @@
 #include "CommandBuffer.h"
 #include "Buffers.h"
 #include "Geometry.h"
+#include "DescriptorSet.h"
 
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
+
+struct UniformBufferObject
+{
+	glm::mat4 model;
+	glm::mat4 view;
+	glm::mat4 proj;
+
+	VkDescriptorSetLayoutBinding GetDescriptorSetBinding()
+	{
+		VkDescriptorSetLayoutBinding uboLayoutBinding{};
+		uboLayoutBinding.binding = 0;
+		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		uboLayoutBinding.descriptorCount = 1;
+		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+		uboLayoutBinding.pImmutableSamplers = nullptr;
+		return uboLayoutBinding;
+	}
+};
 
 class HelloTriangleApplication 
 {
@@ -59,17 +82,33 @@ private:
 		m_physicalDevice.Init(m_surface.GetSurface());
 		m_logicalDevice.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface());
 		m_swapChain.Init(window, m_physicalDevice.GetDevice(), m_logicalDevice.GetDevice(), m_surface.GetSurface());
-		m_pipeline.Init(m_logicalDevice.GetDevice(), m_swapChain.GetExtent(), m_swapChain.GetFormat(), m_swapChain.GetRenderPass());
+
+		VkDescriptorSetLayoutBinding descBinding = m_transform.GetDescriptorSetBinding();
+		m_descriptorSetLayout.Init(m_logicalDevice.GetDevice(), &descBinding, 1);
+		m_pipeline.Init(m_logicalDevice.GetDevice(), m_swapChain, &m_descriptorSetLayout.GetDescriptorSetLayout(), 1);
+
 		m_pool.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface(), m_logicalDevice.GetDevice());
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 			m_cmdBuffer.Init(m_logicalDevice.GetDevice(), m_pool.GetPool());
 		createSyncObjects();
+
+		m_descriptorPool.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		m_descriptorSet.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout.GetDescriptorSetLayout(), m_descriptorPool.GetDescriptorPool());
+
 		m_vertices = Geometry::GetDefaultVertices();
 		m_vertexBuffer.InitAsVertexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
 			m_logicalDevice.GetGraphicsQueue(),m_vertices.size() * sizeof(Geometry::Vertex), m_vertices.data());
 		m_indices= Geometry::GetDefaultIndices();
 		m_indexBuffer.InitAsIndexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
 			m_logicalDevice.GetGraphicsQueue(),m_indices.size() * sizeof(Geometry::IndexType), m_indices.data());
+
+		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			m_uniformBuffer[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+			m_uniformBuffer[i].MapMemory(0);
+			m_descriptorSet.UpdateDescriptors(m_uniformBuffer[i].GetBuffer(), sizeof(UniformBufferObject), i, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+		}
 
 	}
 
@@ -102,8 +141,21 @@ private:
 		vkDeviceWaitIdle(m_logicalDevice.GetDevice());
 	}
 
+	void updateUniformBuffer()
+	{
+		static auto startTime = std::chrono::high_resolution_clock::now();
+		auto currentTime = std::chrono::high_resolution_clock::now();
+		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		m_transform.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_transform.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_transform.proj = glm::perspective(glm::radians(45.0f), m_swapChain.GetAspectRatio(), 0.1f, 10.0f);
+		m_transform.proj[1][1] *= -1;
+		m_uniformBuffer[m_currentFrame].CopyMemory(&m_transform);
+	}
+
 	void drawFrame()
 	{
+		updateUniformBuffer();
 		vkWaitForFences(m_logicalDevice.GetDevice(), 1, &m_inFlightFence[m_currentFrame], VK_TRUE, UINT64_MAX);
 		int imageIndexT = m_swapChain.GetCurrentFrameBufferIndex(m_imageAvailableSemph[m_currentFrame]);
 		if (imageIndexT == -1)
@@ -111,8 +163,9 @@ private:
 		uint32_t imageIndex = static_cast<uint32_t>(imageIndexT);
 		vkResetFences(m_logicalDevice.GetDevice(), 1, &m_inFlightFence[m_currentFrame]);
 		m_cmdBuffer.Reset(m_currentFrame);
-		m_cmdBuffer.BeginRenderPass(m_swapChain.GetRenderPassInfo(imageIndex), m_currentFrame);
+		m_cmdBuffer.BeginRenderPass(m_swapChain.GetRenderPassBeginInfo(imageIndex), m_currentFrame);
 		m_cmdBuffer.BindGraphicsPipeline(m_pipeline.GetPipeline(), m_currentFrame);
+		m_cmdBuffer.BindDescriptorSet(m_currentFrame, m_pipeline.GetPipelineLayout(), m_descriptorSet.GetDescriptorSet(m_currentFrame));
 		m_cmdBuffer.SetViewport(SwapChain::GetViewport(), m_currentFrame);
 		m_cmdBuffer.SetScissorRect(SwapChain::GetScissorRect(), m_currentFrame);
 		VkDeviceSize offsets[] = { 0 };
@@ -155,13 +208,15 @@ private:
 		m_vertexBuffer.Release();
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
-
+			m_uniformBuffer[i].Release();
 			vkDestroySemaphore(m_logicalDevice.GetDevice(), m_renderFinishedSemph[i], nullptr);
 			vkDestroySemaphore(m_logicalDevice.GetDevice(), m_imageAvailableSemph[i], nullptr);
 			vkDestroyFence(m_logicalDevice.GetDevice(), m_inFlightFence[i], nullptr);
 		}
 		m_pool.Release();
+		m_descriptorPool.Release();
 		m_pipeline.Release();
+		m_descriptorSetLayout.Release();
 		m_swapChain.Release();
 		m_surface.Release();
 		m_logicalDevice.Release();
@@ -182,6 +237,11 @@ private:
 	CommandBuffer m_cmdBuffer;
 	Buffer m_vertexBuffer;
 	Buffer m_indexBuffer;
+	std::array<Buffer, MAX_FRAMES_IN_FLIGHT> m_uniformBuffer;
+	UniformBufferObject m_transform;
+	DescriptorSetLayout m_descriptorSetLayout;
+	DescriptorPool m_descriptorPool;
+	DescriptorSet m_descriptorSet;
 	std::vector<Geometry::Vertex> m_vertices;
 	std::vector<Geometry::IndexType> m_indices;
 	std::vector<VkSemaphore> m_imageAvailableSemph;

@@ -4,6 +4,7 @@
 #include "GraphicsPipeline.h"
 #include "math.h"
 #include "Geometry.h"
+#include "SwapChain.h"
 
 
 std::vector<char> ReadFile(const std::string& filename)
@@ -52,7 +53,7 @@ VkPipelineShaderStageCreateInfo CreateShaderStageInfo(VkShaderModule shaderModul
 	return ShaderStageInfo;
 }
 
-void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageFormat, VkRenderPass& renderPass)
+void GraphicsPipeline::Init(VkDevice& device, SwapChain& swapChain, VkDescriptorSetLayout* layouts, uint32_t layoutsCount)
 {
 	m_device = &device;
 	m_vertexShader = CreateShader("shaders/bin/vert.spv", device);
@@ -97,7 +98,7 @@ void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageF
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizer.lineWidth = 1.0f;
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 	rasterizer.depthBiasConstantFactor = 0.0f; // Optional
 	rasterizer.depthBiasClamp = 0.0f; // Optional
@@ -135,8 +136,8 @@ void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageF
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = 0; // Optional
-	pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+	pipelineLayoutInfo.setLayoutCount = layoutsCount; // Optional
+	pipelineLayoutInfo.pSetLayouts = layouts; // Optional
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
@@ -157,7 +158,7 @@ void GraphicsPipeline::Init(VkDevice& device, VkExtent2D extent, VkFormat imageF
 	pipelineCreateInfo.pColorBlendState = &colorBlending;
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 	pipelineCreateInfo.layout = m_pipelineLayout;
-	pipelineCreateInfo.renderPass = renderPass;
+	pipelineCreateInfo.renderPass = swapChain.GetRenderPass();
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	pipelineCreateInfo.basePipelineIndex = -1; // Optional

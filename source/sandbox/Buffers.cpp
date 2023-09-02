@@ -55,7 +55,9 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, V
 void Buffer::Init(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t sizeOfBuffer, VkBufferUsageFlags bufferUsage,
 	              VkMemoryPropertyFlags memoryProperties)
 {
+	VulkanObjectInitialized();
 	m_device = &device;
+	m_bufferSize = sizeOfBuffer;
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufferInfo.size = sizeOfBuffer;
@@ -87,10 +89,9 @@ void Buffer::InitAsVertexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevi
 	stagingBuffer.Init(device, physicalDevice,  sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	void* mappedMemory;
-	vkMapMemory(device, stagingBuffer.m_buffMemory, 0, sizeOfBuffer, 0, &mappedMemory);
-	memcpy(mappedMemory, data, sizeOfBuffer);
-	vkUnmapMemory(device, stagingBuffer.m_buffMemory);
+	stagingBuffer.MapMemory(0);
+	memcpy(stagingBuffer.m_mappedMemory, data, sizeOfBuffer);
+	stagingBuffer.UnmapMemory();
 
 	Init(device, physicalDevice, sizeOfBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -106,10 +107,9 @@ void Buffer::InitAsIndexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevic
 	stagingBuffer.Init(device, physicalDevice,  sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	void* mappedMemory;
-	vkMapMemory(device, stagingBuffer.m_buffMemory, 0, sizeOfBuffer, 0, &mappedMemory);
-	memcpy(mappedMemory, data, sizeOfBuffer);
-	vkUnmapMemory(device, stagingBuffer.m_buffMemory);
+	stagingBuffer.MapMemory(0);
+	stagingBuffer.CopyMemory(data);
+	stagingBuffer.UnmapMemory();
 
 	Init(device, physicalDevice, sizeOfBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);

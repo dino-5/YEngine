@@ -4,7 +4,6 @@
 #include "SwapChain.h"
 #include "Queue.h"
 
-const int MAX_FRAMES_IN_FLIGHT = 2;
 
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
@@ -187,7 +186,7 @@ void SwapChain::CreateFrameBuffers()
 }
 
 
-VkRenderPassBeginInfo SwapChain::GetRenderPassInfo(uint32_t index)
+VkRenderPassBeginInfo SwapChain::GetRenderPassBeginInfo(uint32_t index)
 {
 	VkRenderPassBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
