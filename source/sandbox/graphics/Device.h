@@ -2,6 +2,9 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 
+VkPhysicalDeviceProperties GetPhysicalDeviceProperties(const VkPhysicalDevice& device);
+VkPhysicalDeviceFeatures GetPhysicalDeviceFeatures(const VkPhysicalDevice& device);
+
 class PhysicalDevice
 {
 public:

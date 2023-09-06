@@ -1,6 +1,12 @@
 #pragma once
 #include <stdexcept>
+#include "../common.h"
 #include "Buffers.h"
+#include <memory>
+
+void Buffer::CopyMemory(void* data) {
+	memcpy(m_mappedMemory, data, m_bufferSize);
+}
 
 void CopyBuffers(VkDevice& device, VkCommandPool& cmdPool, VkQueue queue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
@@ -10,6 +16,7 @@ void CopyBuffers(VkDevice& device, VkCommandPool& cmdPool, VkQueue queue, VkBuff
 	allocInfo.commandPool = cmdPool;
 	allocInfo.commandBufferCount = 1;
 
+	//todo: make it with CommandBuffer class
 	VkCommandBuffer commandBuffer;
 	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
 
@@ -82,16 +89,21 @@ void Buffer::Init(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t s
 
 }
 
+void Buffer::InitAsStagingBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t sizeOfBuffer, void* data)
+{
+
+	Init(device, physicalDevice,  sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	MapMemory(0);
+	CopyMemory(data);
+	UnmapMemory();
+}
+
 void Buffer::InitAsVertexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, VkCommandPool& cmdPool, VkQueue queue,
 	uint32_t sizeOfBuffer, void* data)
 {
 	Buffer stagingBuffer;
-	stagingBuffer.Init(device, physicalDevice,  sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	stagingBuffer.MapMemory(0);
-	memcpy(stagingBuffer.m_mappedMemory, data, sizeOfBuffer);
-	stagingBuffer.UnmapMemory();
+	stagingBuffer.InitAsStagingBuffer(device, physicalDevice,  sizeOfBuffer, data);
 
 	Init(device, physicalDevice, sizeOfBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -104,12 +116,7 @@ void Buffer::InitAsIndexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevic
 	uint32_t sizeOfBuffer, void* data)
 {
 	Buffer stagingBuffer;
-	stagingBuffer.Init(device, physicalDevice,  sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-	stagingBuffer.MapMemory(0);
-	stagingBuffer.CopyMemory(data);
-	stagingBuffer.UnmapMemory();
+	stagingBuffer.InitAsStagingBuffer(device, physicalDevice,  sizeOfBuffer, data);
 
 	Init(device, physicalDevice, sizeOfBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);

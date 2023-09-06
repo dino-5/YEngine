@@ -9,7 +9,7 @@
 #include <glm/mat4x4.hpp>
 
 #include <iostream>
-#include"HelloTriangleApp.h"
+#include "HelloTriangleApp.h"
 
 int main() {
 

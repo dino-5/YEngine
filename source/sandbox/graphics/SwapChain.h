@@ -21,7 +21,7 @@ class SwapChain
 {
 public:
 
-	void Init(GLFWwindow* window, VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface);
+	void Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface);
 	void Reset()
 	{
 		vkDeviceWaitIdle(*m_device);
@@ -93,7 +93,6 @@ private:
 	VkDevice* m_device;
 	VkPhysicalDevice* m_physicalDevice;
 	VkSurfaceKHR* m_surface;
-	GLFWwindow* m_window;
 	std::vector<VkImage> m_images;
 	std::vector<VkImageView> m_imageViews;
 	std::vector<VkFramebuffer> m_frameBuffers;

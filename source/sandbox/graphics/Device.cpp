@@ -56,7 +56,7 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 		isSwapChainSuitable = QuerySwapChainSupport(device, surface).isSuitable();
 
 	return isRequiredExtensionsSupported && properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-		&& features.geometryShader && indices.IsComplete() && isSwapChainSuitable;
+		&& features.geometryShader && indices.IsComplete() && isSwapChainSuitable && features.samplerAnisotropy;
 }
 
 

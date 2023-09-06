@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <GLFW/glfw3.h>
+#include <limits>
 #include <stdexcept>
 #include "SwapChain.h"
 #include "Queue.h"
+#include "../system/Window.h"
 
 
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
@@ -50,14 +52,15 @@ VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
+#undef max
 
-VkExtent2D ChooseSwapExtent(GLFWwindow* window, VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D ChooseSwapExtent(VkSurfaceCapabilitiesKHR& capabilities)
 {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 		return capabilities.currentExtent;
 
 	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
+	Window::GetWindow()->GetFrameBufferSize(width, height);
 	VkExtent2D actualExtent = {
 		static_cast<uint32_t>(width),
 		static_cast<uint32_t>(height)
@@ -74,7 +77,7 @@ void SwapChain::QuerySwapChainProperties()
 
 	m_presentMode = ChooseSwapPresentMode(m_swapChainSupport.presentModes);
 	m_surfaceFormat  = ChooseSwapSurfaceFormat(m_swapChainSupport.formats);
-	m_extent = ChooseSwapExtent(m_window, m_swapChainSupport.capabilities);
+	m_extent = ChooseSwapExtent(m_swapChainSupport.capabilities);
 
 	s_viewport.x = 0.0f;
 	s_viewport.y = 0.0f;
@@ -127,11 +130,10 @@ void SwapChain::CreateSwapChain()
 		throw std::runtime_error("failed to create swap chain");
 }
 
-void SwapChain::Init(GLFWwindow* window, VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface)
+void SwapChain::Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface)
 {
 	m_device = &device;
 	m_physicalDevice= &physicalDevice;
-	m_window = window;
 	m_surface = &surface;
 	Create();
 }

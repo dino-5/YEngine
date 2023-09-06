@@ -10,16 +10,19 @@
 #include <array>
 #include <chrono>
 
-#include "VulkanInstance.h"
-#include "Device.h"
-#include "Surface.h"
-#include "SwapChain.h"
-#include "GraphicsPipeline.h"
-#include "CommandPool.h"
-#include "CommandBuffer.h"
-#include "Buffers.h"
+#include "graphics/VulkanInstance.h"
+#include "graphics/Device.h"
+#include "graphics/Surface.h"
+#include "graphics/SwapChain.h"
+#include "graphics/GraphicsPipeline.h"
+#include "graphics/CommandPool.h"
+#include "graphics/CommandBuffer.h"
+#include "graphics/Buffers.h"
 #include "Geometry.h"
-#include "DescriptorSet.h"
+#include "graphics/DescriptorSet.h"
+#include "graphics/Texture.h"
+
+#include "system/Window.h"
 
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 
@@ -69,31 +72,41 @@ public:
 private:
 	void initWindow()
 	{
-
 		glfwInit();
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan window", nullptr, nullptr);
-		glfwSetFramebufferSizeCallback(window, FrameBufferResizeCallback);
+		m_window.init("Vulkan window", WIDTH, HEIGHT);
+		m_window.setWindowResizeCallback(FrameBufferResizeCallback);
 	}
 	void initVulkan() {
 		VulkanInstance::InitVulkan();
-		m_surface.Init(window);
+		m_surface.Init();
 		m_physicalDevice.Init(m_surface.GetSurface());
 		m_logicalDevice.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface());
-		m_swapChain.Init(window, m_physicalDevice.GetDevice(), m_logicalDevice.GetDevice(), m_surface.GetSurface());
+		m_swapChain.Init(m_physicalDevice.GetDevice(), m_logicalDevice.GetDevice(), m_surface.GetSurface());
 
-		VkDescriptorSetLayoutBinding descBinding = m_transform.GetDescriptorSetBinding();
-		m_descriptorSetLayout.Init(m_logicalDevice.GetDevice(), &descBinding, 1);
+		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+		constexpr uint32_t numberOfBindings= 2;
+		VkDescriptorSetLayoutBinding descBindings[numberOfBindings] = { m_transform.GetDescriptorSetBinding(), samplerLayoutBinding };
+		m_descriptorSetLayout.Init(m_logicalDevice.GetDevice(), descBindings, numberOfBindings);
 		m_pipeline.Init(m_logicalDevice.GetDevice(), m_swapChain, &m_descriptorSetLayout.GetDescriptorSetLayout(), 1);
 
 		m_pool.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface(), m_logicalDevice.GetDevice());
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-			m_cmdBuffer.Init(m_logicalDevice.GetDevice(), m_pool.GetPool());
+		m_cmdBuffer.Init(m_logicalDevice.GetDevice(), m_pool.GetPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
 		createSyncObjects();
 
-		m_descriptorPool.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-		m_descriptorSet.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout.GetDescriptorSetLayout(), m_descriptorPool.GetDescriptorPool());
+		constexpr uint32_t numberOfPools = 2;
+		VkDescriptorPoolSize poolSizes[numberOfPools] = { {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT} ,
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
+		};
+		m_descriptorPool.Init(m_logicalDevice.GetDevice(), poolSizes, numberOfPools);
+		m_descriptorSet.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout.GetDescriptorSetLayout(),
+			m_descriptorPool.GetDescriptorPool());
 
 		m_vertices = Geometry::GetDefaultVertices();
 		m_vertexBuffer.InitAsVertexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
@@ -102,12 +115,28 @@ private:
 		m_indexBuffer.InitAsIndexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
 			m_logicalDevice.GetGraphicsQueue(),m_indices.size() * sizeof(Geometry::IndexType), m_indices.data());
 
+
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
+			// creating of texture
+			TextureCreateInfo textureInfo{
+				.format = VK_FORMAT_R8G8B8A8_SRGB,
+				.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
+			};
+			m_texture[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+				m_logicalDevice.GetGraphicsQueue(), "assets/texture.jpg", textureInfo);
+
 			m_uniformBuffer[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 			m_uniformBuffer[i].MapMemory(0);
-			m_descriptorSet.UpdateDescriptors(m_uniformBuffer[i].GetBuffer(), sizeof(UniformBufferObject), i, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+			constexpr uint32_t numberOfDescriptorSets = 2;
+			VkWriteDescriptorSet descriptorSets[numberOfDescriptorSets];
+			descriptorSets[0] = m_descriptorSet.GetWriteDescriptor(i, m_uniformBuffer[i].GetDescriptorBufferInfo(),
+				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+			descriptorSets[1] = m_descriptorSet.GetWriteDescriptor(i, m_texture[i].GetDescriptorImageInfo(),
+				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+			m_descriptorSet.UpdateDescriptors(descriptorSets, numberOfDescriptorSets);
 		}
 
 	}
@@ -134,7 +163,7 @@ private:
 
 	void mainLoop() 
 	{
-		while (!glfwWindowShouldClose(window)) {
+		while (!m_window.isWindowShouldBeClosed()) {
 			glfwPollEvents();
 			drawFrame();
 		}
@@ -146,10 +175,12 @@ private:
 		static auto startTime = std::chrono::high_resolution_clock::now();
 		auto currentTime = std::chrono::high_resolution_clock::now();
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+		//m_transform.model = glm::mat4(1.0f);
 		m_transform.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		m_transform.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_transform.view = glm::lookAt(glm::vec3(0.0f, 3.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		m_transform.proj = glm::perspective(glm::radians(45.0f), m_swapChain.GetAspectRatio(), 0.1f, 10.0f);
 		m_transform.proj[1][1] *= -1;
+#undef CopyMemory
 		m_uniformBuffer[m_currentFrame].CopyMemory(&m_transform);
 	}
 
@@ -208,6 +239,7 @@ private:
 		m_vertexBuffer.Release();
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
+			m_texture[i].Release();
 			m_uniformBuffer[i].Release();
 			vkDestroySemaphore(m_logicalDevice.GetDevice(), m_renderFinishedSemph[i], nullptr);
 			vkDestroySemaphore(m_logicalDevice.GetDevice(), m_imageAvailableSemph[i], nullptr);
@@ -221,13 +253,12 @@ private:
 		m_surface.Release();
 		m_logicalDevice.Release();
 		VulkanInstance::DestroyVulkan();
-		glfwDestroyWindow(window); 
-		glfwTerminate();
+		m_window.release();
 	}
 
 
 private:
-	GLFWwindow* window;
+	Window m_window;
 	PhysicalDevice m_physicalDevice;
 	LogicalDevice m_logicalDevice;
 	Surface m_surface;
@@ -242,6 +273,7 @@ private:
 	DescriptorSetLayout m_descriptorSetLayout;
 	DescriptorPool m_descriptorPool;
 	DescriptorSet m_descriptorSet;
+	std::array<TextureImage, MAX_FRAMES_IN_FLIGHT> m_texture;
 	std::vector<Geometry::Vertex> m_vertices;
 	std::vector<Geometry::IndexType> m_indices;
 	std::vector<VkSemaphore> m_imageAvailableSemph;

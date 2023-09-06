@@ -1,9 +1,10 @@
 #pragma once
 #include <vulkan/vulkan.h>
-#include "common.h"
+#include "../common.h"
 
 void CopyBuffers(VkDevice& device, VkCommandPool& cmdPool, VkQueue queue, VkBuffer srcBuffer,
 	VkBuffer dstBuffer, VkDeviceSize size);
+uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, VkPhysicalDevice& physicalDevice);
 
 class Buffer
 {
@@ -15,6 +16,8 @@ public:
 	void InitAsVertexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, VkCommandPool& cmdPool, VkQueue queue,
 		uint32_t sizeOfBuffer, void* data);
 
+	void InitAsStagingBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t sizeOfBuffer, void* data );
+
 	void InitAsIndexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, VkCommandPool& cmdPool, VkQueue queue,
 		uint32_t sizeOfBuffer, void* data);
 
@@ -25,6 +28,14 @@ public:
 	{
 		vkUnmapMemory(*m_device, m_buffMemory);
 	 }
+
+	VkDescriptorBufferInfo GetDescriptorBufferInfo() {
+		VkDescriptorBufferInfo desc;
+		desc.buffer = m_buffer;
+		desc.offset = 0;
+		desc.range = m_bufferSize;
+		return desc;
+	}
 		
 	void Release()
 	{
@@ -32,9 +43,7 @@ public:
 		vkDestroyBuffer(*m_device, m_buffer, nullptr);
 		vkFreeMemory(*m_device, m_buffMemory, nullptr);
 	}
-	void CopyMemory(void* data) {
-		memcpy(m_mappedMemory, data, m_bufferSize);
-	}
+	void CopyMemory(void* data);
 	VkBuffer& GetBuffer() { return m_buffer; }
 private:
 	void* m_mappedMemory = nullptr;
