@@ -15,7 +15,7 @@ void DescriptorPool::Init(VkDevice& device, VkDescriptorPoolSize* pools, uint32_
 
 	VkDescriptorPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = 1;
+	poolInfo.poolSizeCount = poolsCount;
 	poolInfo.pPoolSizes = pools;
 	poolInfo.maxSets = GetNumberOfDescriptors(pools, poolsCount);
 

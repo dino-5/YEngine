@@ -1,8 +1,10 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <array>
 
 #include "RenderPass.h"
+#include "Texture.h"
 
 struct GLFWwindow;
 struct SwapChainSupportDetails {
@@ -21,19 +23,28 @@ class SwapChain
 {
 public:
 
-	void Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface);
-	void Reset()
+	void Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface, VkQueue& queue,
+		VkCommandPool& cmdPool);
+	void Reset(VkQueue& queue, VkCommandPool& cmdPool)
 	{
 		vkDeviceWaitIdle(*m_device);
 		Release();
-		Create();
+		Create(queue, cmdPool);
 	}
-	void Create()
+	void Create(VkQueue& queue, VkCommandPool& cmdPool)
 	{
 		QuerySwapChainProperties();
 		CreateSwapChain();
-		CreateSwapChainImages(*m_device);
+		CreateSwapChainImageViews();
 		m_renderPass.Init(*m_device, m_surfaceFormat.format);
+		TextureCreateInfo depthInfo{
+			.format = VK_FORMAT_D24_UNORM_S8_UINT,
+			.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+			.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT
+		};
+		for(int i=0; i<3; i++)
+			m_depthBuffer[i].InitAsDepthBuffer(*m_device, *m_physicalDevice, cmdPool, queue,
+				s_viewport.width, s_viewport.height, depthInfo);
 		CreateFrameBuffers();
 	}
 	float GetAspectRatio() {
@@ -41,6 +52,9 @@ public:
 	}
 	void Release()
 	{
+		for(auto& depthBuffer : m_depthBuffer)
+			depthBuffer.Release();
+
 		m_renderPass.Release();
 		for (auto imageView : m_imageViews) 
 			vkDestroyImageView(*m_device, imageView, nullptr);
@@ -51,14 +65,14 @@ public:
 		vkDestroySwapchainKHR(*m_device, m_swapChain, nullptr);
 	}
 
-	int GetCurrentFrameBufferIndex(VkSemaphore& semaphore)
+	int GetCurrentFrameBufferIndex(VkSemaphore& semaphore, VkQueue& queue, VkCommandPool& cmdPool)
 	{
 		uint32_t index;
 		VkResult result = vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &index);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_isResized)
 		{
 			m_isResized = false;
-			Reset();
+			Reset(queue, cmdPool);
 			return -1;
 		}
 		else if (result != VK_SUCCESS)
@@ -80,7 +94,7 @@ public:
 	}
 private:
 	void QuerySwapChainProperties();
-	void CreateSwapChainImages(VkDevice device);
+	void CreateSwapChainImageViews();
 	void CreateSwapChain();
 	void ConfigureViewport();
 	void CreateFrameBuffers();
@@ -96,6 +110,8 @@ private:
 	std::vector<VkImage> m_images;
 	std::vector<VkImageView> m_imageViews;
 	std::vector<VkFramebuffer> m_frameBuffers;
+	std::array<Texture, 3> m_depthBuffer;
+	std::array<VkClearValue, 2> clearValues{};
 	SwapChainSupportDetails m_swapChainSupport;
 	VkPresentModeKHR m_presentMode;
 	VkSurfaceFormatKHR m_surfaceFormat;

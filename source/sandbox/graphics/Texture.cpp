@@ -4,7 +4,8 @@
 #include "Texture.h"
 #include "Device.h"
 
-void CreateImage(VkDevice& device, uint32_t width, uint32_t height, VkImage& image, TextureCreateInfo textureInfo) {
+void CreateImage(VkDevice& device, uint32_t width, uint32_t height, VkImage& image, VkDeviceMemory& memory, 
+	TextureCreateInfo textureInfo, VkPhysicalDevice physicalDevice) {
 	VkImageCreateInfo imageCreateInfo{};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -25,6 +26,20 @@ void CreateImage(VkDevice& device, uint32_t width, uint32_t height, VkImage& ima
 		throw std::runtime_error("failed to create image!");
 	}
 
+	VkMemoryRequirements memRequirements;
+	vkGetImageMemoryRequirements(device, image, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 
+		physicalDevice);
+
+	if (vkAllocateMemory(device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate image memory!");
+	}
+
+	vkBindImageMemory(device, image, memory, 0);
 }
 
 void Texture::InitAsTexture(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
@@ -41,21 +56,8 @@ void Texture::InitAsTexture(VkDevice& device, VkPhysicalDevice& physicaldevice, 
 	Buffer stagingBuffer;
 	stagingBuffer.InitAsStagingBuffer(device, physicaldevice, imageSize, pixels);
 	stbi_image_free(pixels);
-	CreateImage(device, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), m_image, textureInfo);
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, m_image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicaldevice);
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &m_imageMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
-
-	vkBindImageMemory(device, m_image, m_imageMemory, 0);
+	CreateImage(device, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), m_image, m_imageMemory,
+		textureInfo, physicaldevice);
 
 	CommandBuffer cmdBuffer;
 	cmdBuffer.InitAsSingleTimeCmdBuffer(device, cmdPool);
@@ -63,62 +65,38 @@ void Texture::InitAsTexture(VkDevice& device, VkPhysicalDevice& physicaldevice, 
 	cmdBuffer.CopyBufferToImage(0, stagingBuffer.GetBuffer(), m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	GetBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureInfo.format);
 	cmdBuffer.EndSingleTimeCommands(0, queue);
+	CreateImageView(textureInfo);
+}
+
+void Texture::CreateImageView(TextureCreateInfo textureInfo)
+{
 
 	VkImageViewCreateInfo viewCreateInfo{};
 	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewCreateInfo.image = m_image;
 	viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewCreateInfo.format = textureInfo.format;
-	viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	viewCreateInfo.subresourceRange.aspectMask = textureInfo.aspectFlags;
 	viewCreateInfo.subresourceRange.baseMipLevel = 0;
 	viewCreateInfo.subresourceRange.levelCount = 1;
 	viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	viewCreateInfo.subresourceRange.layerCount = 1;
 
-	if (vkCreateImageView(device, &viewCreateInfo, nullptr, &m_view) != VK_SUCCESS)
+	if (vkCreateImageView(*m_device, &viewCreateInfo, nullptr, &m_view) != VK_SUCCESS)
 		throw std::runtime_error("failed to create image view");
-
-
 }
 
 void Texture::InitAsDepthBuffer(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
 	uint32_t width, uint32_t height, TextureCreateInfo textureInfo)
 {
-	CreateImage(device, width, height, m_image, textureInfo);
-
-	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(device, m_image, &memRequirements);
-
-	VkMemoryAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicaldevice);
-
-	if (vkAllocateMemory(device, &allocInfo, nullptr, &m_imageMemory) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate image memory!");
-	}
-
-	vkBindImageMemory(device, m_image, m_imageMemory, 0);
+	m_device = &device;
+	CreateImage(device, width, height, m_image, m_imageMemory, textureInfo, physicaldevice);
 
 	CommandBuffer cmdBuffer;
 	cmdBuffer.InitAsSingleTimeCmdBuffer(device, cmdPool);
 	GetBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, textureInfo.format);
 
-	VkImageViewCreateInfo viewCreateInfo{};
-	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	viewCreateInfo.image = m_image;
-	viewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	viewCreateInfo.format = textureInfo.format;
-	viewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	viewCreateInfo.subresourceRange.baseMipLevel = 0;
-	viewCreateInfo.subresourceRange.levelCount = 1;
-	viewCreateInfo.subresourceRange.baseArrayLayer = 0;
-	viewCreateInfo.subresourceRange.layerCount = 1;
-
-	if (vkCreateImageView(device, &viewCreateInfo, nullptr, &m_view) != VK_SUCCESS)
-		throw std::runtime_error("failed to create image view");
-
-
+	CreateImageView(textureInfo);
 }
 
 VkSampler CreateSampler(VkDevice& device, VkPhysicalDevice physicaldevice)

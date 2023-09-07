@@ -1,5 +1,7 @@
 #pragma once
 #define GLFW_INCLUDE_VULKAN
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -83,7 +85,9 @@ private:
 		m_surface.Init();
 		m_physicalDevice.Init(m_surface.GetSurface());
 		m_logicalDevice.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface());
-		m_swapChain.Init(m_physicalDevice.GetDevice(), m_logicalDevice.GetDevice(), m_surface.GetSurface());
+		m_pool.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface(), m_logicalDevice.GetDevice());
+		m_swapChain.Init(m_physicalDevice.GetDevice(), m_logicalDevice.GetDevice(), m_surface.GetSurface(), 
+			m_logicalDevice.GetGraphicsQueue(), m_pool.GetPool());
 
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 1;
@@ -96,13 +100,12 @@ private:
 		m_descriptorSetLayout.Init(m_logicalDevice.GetDevice(), descBindings, numberOfBindings);
 		m_pipeline.Init(m_logicalDevice.GetDevice(), m_swapChain, &m_descriptorSetLayout.GetDescriptorSetLayout(), 1);
 
-		m_pool.Init(m_physicalDevice.GetDevice(), m_surface.GetSurface(), m_logicalDevice.GetDevice());
 		m_cmdBuffer.Init(m_logicalDevice.GetDevice(), m_pool.GetPool(), static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
 		createSyncObjects();
 
 		constexpr uint32_t numberOfPools = 2;
 		VkDescriptorPoolSize poolSizes[numberOfPools] = { {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT} ,
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT*3 }
 		};
 		m_descriptorPool.Init(m_logicalDevice.GetDevice(), poolSizes, numberOfPools);
 		m_descriptorSet.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout.GetDescriptorSetLayout(),
@@ -116,15 +119,18 @@ private:
 			m_logicalDevice.GetGraphicsQueue(),m_indices.size() * sizeof(Geometry::IndexType), m_indices.data());
 
 
+		TextureCreateInfo textureInfo{
+			.format = VK_FORMAT_R8G8B8A8_SRGB,
+			.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+			.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT
+		};
+
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 			// creating of texture
-			TextureCreateInfo textureInfo{
-				.format = VK_FORMAT_R8G8B8A8_SRGB,
-				.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT
-			};
 			m_texture[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
 				m_logicalDevice.GetGraphicsQueue(), "assets/texture.jpg", textureInfo);
+
 
 			m_uniformBuffer[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
@@ -177,7 +183,7 @@ private:
 		float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 		//m_transform.model = glm::mat4(1.0f);
 		m_transform.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-		m_transform.view = glm::lookAt(glm::vec3(0.0f, 3.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+		m_transform.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 		m_transform.proj = glm::perspective(glm::radians(45.0f), m_swapChain.GetAspectRatio(), 0.1f, 10.0f);
 		m_transform.proj[1][1] *= -1;
 #undef CopyMemory
@@ -188,7 +194,8 @@ private:
 	{
 		updateUniformBuffer();
 		vkWaitForFences(m_logicalDevice.GetDevice(), 1, &m_inFlightFence[m_currentFrame], VK_TRUE, UINT64_MAX);
-		int imageIndexT = m_swapChain.GetCurrentFrameBufferIndex(m_imageAvailableSemph[m_currentFrame]);
+		int imageIndexT = m_swapChain.GetCurrentFrameBufferIndex(m_imageAvailableSemph[m_currentFrame], 
+			m_logicalDevice.GetGraphicsQueue(), m_pool.GetPool());
 		if (imageIndexT == -1)
 			return;
 		uint32_t imageIndex = static_cast<uint32_t>(imageIndexT);
@@ -269,6 +276,7 @@ private:
 	Buffer m_vertexBuffer;
 	Buffer m_indexBuffer;
 	std::array<Buffer, MAX_FRAMES_IN_FLIGHT> m_uniformBuffer;
+	std::array<Texture, MAX_FRAMES_IN_FLIGHT> m_depthTexture;
 	UniformBufferObject m_transform;
 	DescriptorSetLayout m_descriptorSetLayout;
 	DescriptorPool m_descriptorPool;

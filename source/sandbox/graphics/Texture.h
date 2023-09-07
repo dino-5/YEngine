@@ -31,6 +31,7 @@ struct TextureCreateInfo
 {
 	VkFormat format{};
 	VkImageUsageFlags usage{};
+	VkImageAspectFlags aspectFlags{};
 };
 
 class Texture
@@ -42,6 +43,8 @@ public:
 		uint32_t width, uint32_t height, TextureCreateInfo textureInfo);
 	void GetBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newLayout, VkFormat format);
 
+	VkImageView GetImageView() { return m_view; }
+
 	void Release()
 	{
 		vkDestroyImageView(*m_device, m_view, nullptr);
@@ -49,6 +52,7 @@ public:
 		vkFreeMemory(*m_device, m_imageMemory, nullptr);
 	}
 	VkDescriptorImageInfo GetDescriptorImageInfo(Sampler sampler);
+	void CreateImageView(TextureCreateInfo textureInfo);
 private:
 	VkDevice* m_device;
 	VkImageLayout m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;

@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <GLFW/glfw3.h>
 #include <limits>
+#include <array>
 #include <stdexcept>
 #include "SwapChain.h"
 #include "Queue.h"
@@ -88,6 +89,9 @@ void SwapChain::QuerySwapChainProperties()
 
 	s_scissorRect.offset = { 0, 0 };
 	s_scissorRect.extent = m_extent;
+	
+	clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+	clearValues[1].depthStencil = { 1.0f, 0 };
 	 
 	m_imageCount = m_swapChainSupport.capabilities.minImageCount + 1;
 	if (m_swapChainSupport.capabilities.maxImageCount > 0 && m_imageCount > m_swapChainSupport.capabilities.maxImageCount)
@@ -130,20 +134,21 @@ void SwapChain::CreateSwapChain()
 		throw std::runtime_error("failed to create swap chain");
 }
 
-void SwapChain::Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface)
+void SwapChain::Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface, 
+	VkQueue& queue, VkCommandPool& cmdPool)
 {
 	m_device = &device;
 	m_physicalDevice= &physicalDevice;
 	m_surface = &surface;
-	Create();
+	Create(queue, cmdPool);
 }
 
-void SwapChain::CreateSwapChainImages(VkDevice device)
+void SwapChain::CreateSwapChainImageViews()
 {
 	uint32_t imageCount;
-	vkGetSwapchainImagesKHR(device, m_swapChain, &imageCount, nullptr);
+	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &imageCount, nullptr);
 	m_images.resize(imageCount);
-	vkGetSwapchainImagesKHR(device, m_swapChain, &imageCount, m_images.data());
+	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &imageCount, m_images.data());
 
 	m_imageViews.resize(m_images.size());
 	for (size_t i = 0; i < m_images.size(); i++) {
@@ -152,16 +157,12 @@ void SwapChain::CreateSwapChainImages(VkDevice device)
 		createInfo.image = m_images[i];
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 		createInfo.format = m_surfaceFormat.format;
-		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 		createInfo.subresourceRange.baseMipLevel = 0;
 		createInfo.subresourceRange.levelCount = 1;
 		createInfo.subresourceRange.baseArrayLayer = 0;
 		createInfo.subresourceRange.layerCount = 1;
-		if (vkCreateImageView(device, &createInfo, nullptr, &m_imageViews[i]) != VK_SUCCESS) {
+		if (vkCreateImageView(*m_device, &createInfo, nullptr, &m_imageViews[i]) != VK_SUCCESS) {
 			throw std::runtime_error("failed to create image views!");
 		}
 	}
@@ -172,11 +173,13 @@ void SwapChain::CreateFrameBuffers()
 	m_frameBuffers.resize(m_imageViews.size());
 	for (size_t i = 0; i < m_imageViews.size(); i++)
 	{
+		constexpr const uint32_t viewCount = 2;
+		VkImageView views[viewCount] = { m_imageViews[i], m_depthBuffer[i].GetImageView()};
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = m_renderPass.GetRenderPass();
-		framebufferInfo.attachmentCount = 1;
-		framebufferInfo.pAttachments = &m_imageViews[i];
+		framebufferInfo.attachmentCount = viewCount;
+		framebufferInfo.pAttachments = views;
 		framebufferInfo.width = m_extent.width;
 		framebufferInfo.height = m_extent.height;
 		framebufferInfo.layers = 1;
@@ -196,7 +199,9 @@ VkRenderPassBeginInfo SwapChain::GetRenderPassBeginInfo(uint32_t index)
 	beginInfo.framebuffer = m_frameBuffers[index];
 	beginInfo.renderArea.offset = { 0, 0 };
 	beginInfo.renderArea.extent = m_extent;
-	beginInfo.clearValueCount = 1;
-	beginInfo.pClearValues = &s_clearColor;
+
+	beginInfo.clearValueCount = 2;
+	beginInfo.pClearValues = clearValues.data();
+
 	return beginInfo;
 }

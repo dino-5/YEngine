@@ -144,6 +144,16 @@ void GraphicsPipeline::Init(VkDevice& device, SwapChain& swapChain, VkDescriptor
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) 
 		throw std::runtime_error("failed to create pipeline layout!");
 
+	VkPipelineDepthStencilStateCreateInfo depthStencilState{};
+	depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencilState.depthTestEnable = VK_TRUE;
+	depthStencilState.depthWriteEnable = VK_TRUE;
+	depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS;
+	depthStencilState.depthBoundsTestEnable = VK_TRUE;
+	depthStencilState.minDepthBounds = 0.0f;
+	depthStencilState.maxDepthBounds = 1.0f;
+
+	depthStencilState.stencilTestEnable = VK_FALSE;
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -155,6 +165,7 @@ void GraphicsPipeline::Init(VkDevice& device, SwapChain& swapChain, VkDescriptor
 	pipelineCreateInfo.pRasterizationState = &rasterizer;
 	pipelineCreateInfo.pMultisampleState = &multisampling;
 	pipelineCreateInfo.pDepthStencilState = nullptr;
+	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 	pipelineCreateInfo.pColorBlendState = &colorBlending;
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 	pipelineCreateInfo.layout = m_pipelineLayout;
