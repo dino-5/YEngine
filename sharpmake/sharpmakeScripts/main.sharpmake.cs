@@ -103,6 +103,7 @@ class ThirdPartyProject: BaseSimpleLibraryProject
         conf.IncludePaths.Add(@"[project.SourceRootPath]/stb_image");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glfw/include");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glm");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/tiny_obj_loader");
         conf.LibraryFiles.Add("glfw3_mt"); // glfw3_mt for multi thread debuging
         conf.LibraryPaths.Add(@"[project.SourceRootPath]/glfw");
 

@@ -24,6 +24,8 @@
 #include "graphics/DescriptorSet.h"
 #include "graphics/Texture.h"
 
+#include "Model.h"
+
 #include "system/Window.h"
 
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
@@ -111,25 +113,30 @@ private:
 		m_descriptorSet.Init(m_logicalDevice.GetDevice(), MAX_FRAMES_IN_FLIGHT, m_descriptorSetLayout.GetDescriptorSetLayout(),
 			m_descriptorPool.GetDescriptorPool());
 
-		m_vertices = Geometry::GetDefaultVertices();
-		m_vertexBuffer.InitAsVertexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
-			m_logicalDevice.GetGraphicsQueue(),m_vertices.size() * sizeof(Geometry::Vertex), m_vertices.data());
-		m_indices= Geometry::GetDefaultIndices();
-		m_indexBuffer.InitAsIndexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
-			m_logicalDevice.GetGraphicsQueue(),m_indices.size() * sizeof(Geometry::IndexType), m_indices.data());
-
-
 		TextureCreateInfo textureInfo{
 			.format = VK_FORMAT_R8G8B8A8_SRGB,
 			.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
 			.aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT
 		};
+		// TODO format added for image
+		m_model.Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+			m_logicalDevice.GetGraphicsQueue(), "assets/diffuse.jpg", textureInfo,
+			"assets/backpack.obj");
+
+		m_vertices = m_model.m_vertices;
+		m_vertexBuffer.InitAsVertexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+			m_logicalDevice.GetGraphicsQueue(), m_vertices.size() * sizeof(Geometry::Vertex), m_vertices.data());
+		m_indices= m_model.m_indices;
+		m_indexBuffer.InitAsIndexBuffer(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+			m_logicalDevice.GetGraphicsQueue(),m_indices.size() * sizeof(Geometry::IndexType), m_indices.data());
+
+
 
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 			// creating of texture
-			m_texture[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
-				m_logicalDevice.GetGraphicsQueue(), "assets/texture.jpg", textureInfo);
+			//m_texture[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), m_pool.GetPool(),
+			//	m_logicalDevice.GetGraphicsQueue(), "assets/texture.jpg", textureInfo);
 
 
 			m_uniformBuffer[i].Init(m_logicalDevice.GetDevice(), m_physicalDevice.GetDevice(), sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -140,7 +147,7 @@ private:
 			VkWriteDescriptorSet descriptorSets[numberOfDescriptorSets];
 			descriptorSets[0] = m_descriptorSet.GetWriteDescriptor(i, m_uniformBuffer[i].GetDescriptorBufferInfo(),
 				VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-			descriptorSets[1] = m_descriptorSet.GetWriteDescriptor(i, m_texture[i].GetDescriptorImageInfo(),
+			descriptorSets[1] = m_descriptorSet.GetWriteDescriptor(i, m_model.m_texture[i].GetDescriptorImageInfo(),
 				VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
 			m_descriptorSet.UpdateDescriptors(descriptorSets, numberOfDescriptorSets);
 		}
@@ -244,9 +251,10 @@ private:
 	void cleanup() {
 		m_indexBuffer.Release();
 		m_vertexBuffer.Release();
+		m_model.Release();
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
-			m_texture[i].Release();
+			//m_texture[i].Release();
 			m_uniformBuffer[i].Release();
 			vkDestroySemaphore(m_logicalDevice.GetDevice(), m_renderFinishedSemph[i], nullptr);
 			vkDestroySemaphore(m_logicalDevice.GetDevice(), m_imageAvailableSemph[i], nullptr);
@@ -288,5 +296,6 @@ private:
 	std::vector<VkSemaphore> m_renderFinishedSemph;
 	std::vector<VkFence> m_inFlightFence;
 	uint32_t m_currentFrame = 0;
+	Model m_model;
 };
 
