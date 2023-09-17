@@ -100,12 +100,18 @@ class ThirdPartyProject: BaseSimpleLibraryProject
     {
         base.ConfigureAll(conf, target);
         conf.IncludePaths.Add(@"[project.SourceRootPath]/..");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/imgui");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/imgui/backends");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/stb_image");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glfw/include");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glm");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/tiny_obj_loader");
         conf.LibraryFiles.Add("glfw3_mt"); // glfw3_mt for multi thread debuging
         conf.LibraryPaths.Add(@"[project.SourceRootPath]/glfw");
+        conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
+        conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
+        conf.LibraryFiles.Add("vulkan-1.lib");
 
         if (target.OutputType == OutputType.Dll)
         {
