@@ -3,12 +3,17 @@
 #include <limits>
 #include <array>
 #include <stdexcept>
+
+#include "Device.h"
+#include "CommandPool.h"
+#include "Surface.h"
 #include "SwapChain.h"
 #include "Queue.h"
 #include "../system/Window.h"
 
 
-SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
+
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	SwapChainSupportDetails details;
 
@@ -34,7 +39,7 @@ SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurface
 }
 
 
-VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
 {
 	for (const auto& format : availableFormats)
 	{
@@ -44,7 +49,7 @@ VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
 	return availableFormats[0];
 }
 
-VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
+VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes)
 {
 	for (const auto& mode : availablePresentModes)
 	{
@@ -55,7 +60,7 @@ VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& avai
 }
 #undef max
 
-VkExtent2D ChooseSwapExtent(VkSurfaceCapabilitiesKHR& capabilities)
+VkExtent2D chooseSwapExtent(VkSurfaceCapabilitiesKHR& capabilities)
 {
 	if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
 		return capabilities.currentExtent;
@@ -72,13 +77,13 @@ VkExtent2D ChooseSwapExtent(VkSurfaceCapabilitiesKHR& capabilities)
 	return actualExtent;
 }
 
-void SwapChain::QuerySwapChainProperties()
+void SwapChain::querySwapChainProperties()
 {
-	m_swapChainSupport = QuerySwapChainSupport(*m_physicalDevice, *m_surface);
+	m_swapChainSupport = querySwapChainSupport(*m_physicalDevice, *m_surface);
 
-	m_presentMode = ChooseSwapPresentMode(m_swapChainSupport.presentModes);
-	m_surfaceFormat  = ChooseSwapSurfaceFormat(m_swapChainSupport.formats);
-	m_extent = ChooseSwapExtent(m_swapChainSupport.capabilities);
+	m_presentMode = chooseSwapPresentMode(m_swapChainSupport.presentModes);
+	m_surfaceFormat  = chooseSwapSurfaceFormat(m_swapChainSupport.formats);
+	m_extent = chooseSwapExtent(m_swapChainSupport.capabilities);
 
 	s_viewport.x = 0.0f;
 	s_viewport.y = 0.0f;
@@ -98,7 +103,7 @@ void SwapChain::QuerySwapChainProperties()
 		m_imageCount = m_swapChainSupport.capabilities.maxImageCount;
 }
 
-void SwapChain::CreateSwapChain()
+void SwapChain::createSwapChain()
 {
 	VkSwapchainCreateInfoKHR createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -134,16 +139,15 @@ void SwapChain::CreateSwapChain()
 		throw std::runtime_error("failed to create swap chain");
 }
 
-void SwapChain::Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface, 
-	VkQueue& queue, VkCommandPool& cmdPool)
+void SwapChain::init(Device& device, Surface& surface)
 {
-	m_device = &device;
-	m_physicalDevice= &physicalDevice;
-	m_surface = &surface;
-	Create(queue, cmdPool);
+	m_device = &device.getLogicalDevice().getDevice();
+	m_physicalDevice= &device.getPhysicalDevice().getDevice();
+	m_surface = &surface.getSurface();
+	create();
 }
 
-void SwapChain::CreateSwapChainImageViews()
+void SwapChain::createSwapChainImageViews()
 {
 	uint32_t imageCount;
 	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &imageCount, nullptr);
@@ -168,16 +172,16 @@ void SwapChain::CreateSwapChainImageViews()
 	}
 }
 
-void SwapChain::CreateFrameBuffers()
+void SwapChain::createFrameBuffers()
 {
 	m_frameBuffers.resize(m_imageViews.size());
 	for (size_t i = 0; i < m_imageViews.size(); i++)
 	{
 		constexpr const uint32_t viewCount = 2;
-		VkImageView views[viewCount] = { m_imageViews[i], m_depthBuffer[i].GetImageView()};
+		VkImageView views[viewCount] = { m_imageViews[i], m_depthBuffer[i].getImageView()};
 		VkFramebufferCreateInfo framebufferInfo{};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = m_renderPass.GetRenderPass();
+		framebufferInfo.renderPass = m_renderPass.getRenderPass();
 		framebufferInfo.attachmentCount = viewCount;
 		framebufferInfo.pAttachments = views;
 		framebufferInfo.width = m_extent.width;
@@ -191,11 +195,11 @@ void SwapChain::CreateFrameBuffers()
 }
 
 
-VkRenderPassBeginInfo SwapChain::GetRenderPassBeginInfo(uint32_t index)
+VkRenderPassBeginInfo SwapChain::getRenderPassBeginInfo(uint32_t index)
 {
 	VkRenderPassBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	beginInfo.renderPass = m_renderPass.GetRenderPass();
+	beginInfo.renderPass = m_renderPass.getRenderPass();
 	beginInfo.framebuffer = m_frameBuffers[index];
 	beginInfo.renderArea.offset = { 0, 0 };
 	beginInfo.renderArea.extent = m_extent;

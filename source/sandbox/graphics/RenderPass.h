@@ -4,12 +4,12 @@
 class RenderPass
 {
 public:
-	void Init(VkDevice& device, VkFormat imageFormat);
-	void Release()
+	void init(VkDevice& device, VkFormat imageFormat);
+	void release()
 	{
 		vkDestroyRenderPass(*m_device, m_renderPass, nullptr);
 	}
-	VkRenderPass& GetRenderPass() { return m_renderPass; }
+	VkRenderPass& getRenderPass() { return m_renderPass; }
 private:
 	VkRenderPass m_renderPass;
 	VkDevice* m_device;

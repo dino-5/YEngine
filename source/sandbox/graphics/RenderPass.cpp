@@ -2,7 +2,7 @@
 #include <array>
 #include <stdexcept>
 
-void RenderPass::Init(VkDevice& device, VkFormat imageFormat)
+void RenderPass::init(VkDevice& device, VkFormat imageFormat)
 {
 	m_device = &device;
 

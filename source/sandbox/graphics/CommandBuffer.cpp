@@ -1,15 +1,18 @@
 #include <stdexcept>
 #include "CommandBuffer.h"
 #include "SwapChain.h"
+#include "GraphicsModule.h"
 
-void CommandBuffer::Init(VkDevice& device, VkCommandPool& pool, uint32_t count)
+using namespace graphics;
+
+void CommandBuffer::init(uint32_t count)
 {
-	m_device = &device;
-	m_cmdPool = &pool;
-	m_cmdBuffer.resize(MAX_FRAMES_IN_FLIGHT);
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkCommandPool& cmdPool = GraphicsModule::GetInstance()->getCommandPool().getPool();
+	m_cmdBuffer.resize(count);
 	VkCommandBufferAllocateInfo cmdBufferAllocInfo{};
 	cmdBufferAllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufferAllocInfo.commandPool = pool;
+	cmdBufferAllocInfo.commandPool = cmdPool;
 	cmdBufferAllocInfo.commandBufferCount = count;
 	cmdBufferAllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
@@ -17,19 +20,19 @@ void CommandBuffer::Init(VkDevice& device, VkCommandPool& pool, uint32_t count)
 		throw std::runtime_error("failed to allocate command buffer");
 }
 
-void CommandBuffer::InitAsSingleTimeCmdBuffer(VkDevice& device, VkCommandPool& pool)
+void CommandBuffer::initAsSingleTimeCmdBuffer()
 {
-	Init(device, pool, 1);
+	init(1);
 
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	BeginCmdBuffer(0, beginInfo);
+	beginCmdBuffer(0, beginInfo);
 }
 
-void CommandBuffer::EndSingleTimeCommands(uint32_t index, VkQueue queue) 
+void CommandBuffer::endSingleTimeCommands(uint32_t index, VkQueue queue) 
 {
-	EndCmdBuffer(index);
+	endCmdBuffer(index);
 	VkSubmitInfo submitInfo{};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
@@ -38,23 +41,26 @@ void CommandBuffer::EndSingleTimeCommands(uint32_t index, VkQueue queue)
 	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(queue);
 
+	auto cmdPool = GraphicsModule::GetInstance()->getCommandPool().getPool();
+	auto device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+ 
 	for (uint32_t i = 0; i < m_cmdBuffer.size(); i++)
-		vkFreeCommandBuffers(*m_device, *m_cmdPool, 1, &m_cmdBuffer[i]);
+		vkFreeCommandBuffers(device, cmdPool, 1, &m_cmdBuffer[i]);
 }
 
 
-void CommandBuffer::BeginRenderPass(VkRenderPassBeginInfo info, uint32_t index)
+void CommandBuffer::beginRenderPass(VkRenderPassBeginInfo info, uint32_t index)
 {
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = 0; // Optional
 	beginInfo.pInheritanceInfo = nullptr; // Optional
 
-	BeginCmdBuffer(index, beginInfo);
+	beginCmdBuffer(index, beginInfo);
 	vkCmdBeginRenderPass(m_cmdBuffer[index], &info, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void CommandBuffer::BindGraphicsPipeline(VkPipeline& pipeline, uint32_t index)
+void CommandBuffer::bindGraphicsPipeline(VkPipeline& pipeline, uint32_t index)
 {
 	vkCmdBindPipeline(m_cmdBuffer[index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 }

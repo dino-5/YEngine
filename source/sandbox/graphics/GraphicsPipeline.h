@@ -18,7 +18,7 @@ class SwapChain;
 class GraphicsPipeline
 {
 public:
-	void Init(VkDevice& device, SwapChain& swapChain, VkDescriptorSetLayout* layouts, uint32_t layoutsCount);
+	void init(VkDescriptorSetLayout* layouts, uint32_t layoutsCount);
 	void Release()
 	{
 		vkDestroyShaderModule(*m_device, m_vertexShader, nullptr);

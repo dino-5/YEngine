@@ -1,15 +1,17 @@
 #pragma once
 #include<vulkan/vulkan.h>
+class Device;
+class Surface;
 
 class CommandPool
 {
 public:
-	void Init(VkPhysicalDevice& physicalDevice, VkSurfaceKHR surface, VkDevice& device);
-	void Release()
+	void init(Device& device, Surface surface);
+	void release()
 	{
 		vkDestroyCommandPool(*m_device, m_cmdPool, nullptr);
 	}
-	VkCommandPool& GetPool() { return m_cmdPool; }
+	VkCommandPool& getPool() { return m_cmdPool; }
 private:
 	VkCommandPool m_cmdPool;
 	VkDevice* m_device;

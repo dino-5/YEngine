@@ -4,9 +4,9 @@
 class Surface
 {
 public:
-	void Init();
-	void Release();
-	VkSurfaceKHR& GetSurface() { return m_surface; }
+	void init();
+	void release();
+	VkSurfaceKHR& getSurface() { return m_surface; }
 private:
 	VkSurfaceKHR m_surface;
 };

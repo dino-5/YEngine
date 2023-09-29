@@ -8,22 +8,17 @@
 
 class CommandBuffer;
 
-VkSampler CreateSampler(VkDevice& device, VkPhysicalDevice physicaldevice);
+VkSampler createSampler();
 class Sampler
 {
 public:
-	void Init(VkDevice& device, VkPhysicalDevice physicaldevice)
+	void init()
 	{
-		m_device = &device;
-		m_sampler = CreateSampler(device, physicaldevice);
+		m_sampler = createSampler();
 	}
-	void Release()
-	{
-		vkDestroySampler(*m_device, m_sampler, nullptr);
-	}
-	VkSampler& GetSampler() { return m_sampler; }
+	void release();
+	VkSampler& getSampler() { return m_sampler; }
 private:
-	VkDevice* m_device;
 	VkSampler m_sampler;
 };
 
@@ -37,24 +32,17 @@ struct TextureCreateInfo
 class Texture
 {
 public:
-	void InitAsTexture(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-		const std::string& path, TextureCreateInfo textureInfo);
-	void InitAsDepthBuffer(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-		uint32_t width, uint32_t height, TextureCreateInfo textureInfo);
-	void GetBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newLayout, VkFormat format);
+	void initAsTexture(	const std::string& path, TextureCreateInfo textureInfo);
+	void initAsDepthBuffer(uint32_t width, uint32_t height, TextureCreateInfo textureInfo);
 
-	VkImageView GetImageView() { return m_view; }
+	void getBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newLayout, VkFormat format);
+	VkImageView getImageView() { return m_view; }
+	VkDescriptorImageInfo getDescriptorImageInfo(Sampler sampler);
 
-	void Release()
-	{
-		vkDestroyImageView(*m_device, m_view, nullptr);
-		vkDestroyImage(*m_device, m_image, nullptr);
-		vkFreeMemory(*m_device, m_imageMemory, nullptr);
-	}
-	VkDescriptorImageInfo GetDescriptorImageInfo(Sampler sampler);
-	void CreateImageView(TextureCreateInfo textureInfo);
+	void release();
+	void createImageView(TextureCreateInfo textureInfo);
+
 private:
-	VkDevice* m_device;
 	VkImageLayout m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkImage m_image;
 	VkImageView m_view;
@@ -65,19 +53,18 @@ struct TextureImage
 {
 	Texture texture;
 	Sampler sampler;
-	void Init(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-		const std::string& path, TextureCreateInfo info)
+	void init(const std::string& path, TextureCreateInfo info)
 	{
-		texture.InitAsTexture(device, physicaldevice, cmdPool, queue, path, info);
-		sampler.Init(device, physicaldevice);
+		texture.initAsTexture(path, info);
+		sampler.init();
 	}
 	void Release()
 	{
-		texture.Release();
-		sampler.Release();
+		texture.release();
+		sampler.release();
 	}
-	VkDescriptorImageInfo GetDescriptorImageInfo() {
-		return texture.GetDescriptorImageInfo(sampler);
+	VkDescriptorImageInfo getDescriptorImageInfo() {
+		return texture.getDescriptorImageInfo(sampler);
 	}
 };
 

@@ -11,9 +11,8 @@
 class Model
 {
 public:
-	void Init(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-		const std::string& pathToPixels, TextureCreateInfo info, const std::string& pathToModel);
-	void Release()
+	void init(const std::string& pathToPixels, TextureCreateInfo info, const std::string& pathToModel);
+	void release()
 	{
 		for (uint32_t i = 0; i < 3; i++)
 			m_texture[i].Release();

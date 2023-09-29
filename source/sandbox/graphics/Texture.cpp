@@ -3,9 +3,10 @@
 #include "CommandBuffer.h"
 #include "Texture.h"
 #include "Device.h"
+#include "GraphicsModule.h"
+using namespace graphics;
 
-void CreateImage(VkDevice& device, uint32_t width, uint32_t height, VkImage& image, VkDeviceMemory& memory, 
-	TextureCreateInfo textureInfo, VkPhysicalDevice physicalDevice) {
+void createImage(uint32_t width, uint32_t height, VkImage& image, VkDeviceMemory& memory, TextureCreateInfo textureInfo) {
 	VkImageCreateInfo imageCreateInfo{};
 	imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -21,6 +22,9 @@ void CreateImage(VkDevice& device, uint32_t width, uint32_t height, VkImage& ima
 	imageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCreateInfo.flags = 0; // Optional
+
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkPhysicalDevice& physicalDevice = GraphicsModule::GetInstance()->getDevice().getPhysicalDevice().getDevice();
 
 	if (vkCreateImage(device, &imageCreateInfo, nullptr, &image) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create image!");
@@ -42,10 +46,16 @@ void CreateImage(VkDevice& device, uint32_t width, uint32_t height, VkImage& ima
 	vkBindImageMemory(device, image, memory, 0);
 }
 
-void Texture::InitAsTexture(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-	const std::string& path, TextureCreateInfo textureInfo)
+void Texture::release()
 {
-	m_device = &device;
+	VkDevice device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	vkDestroyImageView(device, m_view, nullptr);
+	vkDestroyImage(device, m_image, nullptr);
+	vkFreeMemory(device, m_imageMemory, nullptr);
+}
+
+void Texture::initAsTexture(const std::string& path, TextureCreateInfo textureInfo)
+{
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = static_cast<uint64_t>(texWidth) * texHeight * 4;
@@ -54,23 +64,23 @@ void Texture::InitAsTexture(VkDevice& device, VkPhysicalDevice& physicaldevice, 
 		throw std::runtime_error("failed to load texture image!");
 	}
 	Buffer stagingBuffer;
-	stagingBuffer.InitAsStagingBuffer(device, physicaldevice, imageSize, pixels);
+	stagingBuffer.initAsStagingBuffer(imageSize, pixels);
 	stbi_image_free(pixels);
-	CreateImage(device, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), m_image, m_imageMemory,
-		textureInfo, physicaldevice);
+	createImage( static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), m_image, m_imageMemory,
+		textureInfo);
 
 	CommandBuffer cmdBuffer;
-	cmdBuffer.InitAsSingleTimeCmdBuffer(device, cmdPool);
-	GetBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureInfo.format);
-	cmdBuffer.CopyBufferToImage(0, stagingBuffer.GetBuffer(), m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
-	GetBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureInfo.format);
-	cmdBuffer.EndSingleTimeCommands(0, queue);
-	CreateImageView(textureInfo);
+	cmdBuffer.initAsSingleTimeCmdBuffer();
+	getBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureInfo.format);
+	cmdBuffer.copyBufferToImage(0, stagingBuffer.getBuffer(), m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	getBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureInfo.format);
+	VkQueue graphicsQueue = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getGraphicsQueue();
+	cmdBuffer.endSingleTimeCommands(0, graphicsQueue);
+	createImageView(textureInfo);
 }
 
-void Texture::CreateImageView(TextureCreateInfo textureInfo)
+void Texture::createImageView(TextureCreateInfo textureInfo)
 {
-
 	VkImageViewCreateInfo viewCreateInfo{};
 	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewCreateInfo.image = m_image;
@@ -82,24 +92,23 @@ void Texture::CreateImageView(TextureCreateInfo textureInfo)
 	viewCreateInfo.subresourceRange.baseArrayLayer = 0;
 	viewCreateInfo.subresourceRange.layerCount = 1;
 
-	if (vkCreateImageView(*m_device, &viewCreateInfo, nullptr, &m_view) != VK_SUCCESS)
+	VkDevice device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	if (vkCreateImageView(device, &viewCreateInfo, nullptr, &m_view) != VK_SUCCESS)
 		throw std::runtime_error("failed to create image view");
 }
 
-void Texture::InitAsDepthBuffer(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-	uint32_t width, uint32_t height, TextureCreateInfo textureInfo)
+void Texture::initAsDepthBuffer(uint32_t width, uint32_t height, TextureCreateInfo textureInfo)
 {
-	m_device = &device;
-	CreateImage(device, width, height, m_image, m_imageMemory, textureInfo, physicaldevice);
+	createImage(width, height, m_image, m_imageMemory, textureInfo);
 
 	CommandBuffer cmdBuffer;
-	cmdBuffer.InitAsSingleTimeCmdBuffer(device, cmdPool);
-	GetBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, textureInfo.format);
+	cmdBuffer.initAsSingleTimeCmdBuffer();
+	getBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, textureInfo.format);
 
-	CreateImageView(textureInfo);
+	createImageView(textureInfo);
 }
 
-VkSampler CreateSampler(VkDevice& device, VkPhysicalDevice physicaldevice)
+VkSampler createSampler()
 {
 	VkSampler sampler;
 	VkSamplerCreateInfo samplerInfo{};
@@ -111,7 +120,10 @@ VkSampler CreateSampler(VkDevice& device, VkPhysicalDevice physicaldevice)
 	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	samplerInfo.anisotropyEnable = VK_TRUE;
 
-	VkPhysicalDeviceProperties deviceProperties = GetPhysicalDeviceProperties(physicaldevice);
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkPhysicalDevice& physicalDevice = GraphicsModule::GetInstance()->getDevice().getPhysicalDevice().getDevice();
+
+	VkPhysicalDeviceProperties deviceProperties = GetPhysicalDeviceProperties(physicalDevice);
 	samplerInfo.maxAnisotropy = deviceProperties.limits.maxSamplerAnisotropy;
 
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
@@ -129,12 +141,18 @@ VkSampler CreateSampler(VkDevice& device, VkPhysicalDevice physicaldevice)
 
 }
 
-VkDescriptorImageInfo Texture::GetDescriptorImageInfo(Sampler sampler)
+void Sampler::release()
+{
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	vkDestroySampler(device, m_sampler, nullptr);
+}
+
+VkDescriptorImageInfo Texture::getDescriptorImageInfo(Sampler sampler)
 {
 	VkDescriptorImageInfo info;
 	info.imageLayout = m_currentLayout;
 	info.imageView = m_view;
-	info.sampler = sampler.GetSampler();
+	info.sampler = sampler.getSampler();
 	return info;
 }
 
@@ -142,7 +160,7 @@ bool hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
-void Texture::GetBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newLayout, VkFormat format)
+void Texture::getBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newLayout, VkFormat format)
 {
 	VkImageMemoryBarrier barrier{};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -198,7 +216,7 @@ void Texture::GetBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newL
 		throw std::invalid_argument("unsupported layout transition!");
 	}
 
-	cmdBuffer.PipelineBarrier(0, srcStage, dstStage, barrier);
+	cmdBuffer.pipelineBarrier(0, srcStage, dstStage, barrier);
 
 	m_currentLayout = newLayout;
 }

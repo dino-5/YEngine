@@ -11,25 +11,14 @@ class DescriptorSetLayout
 public:
 	DesctructorVulkanObject(DescriptorSetLayout)
 
-	void Init(VkDevice& device, VkDescriptorSetLayoutBinding* bindings, uint32_t count)
-	{
-		VulkanObjectInitialized();
-		m_device = &device;
-		VkDescriptorSetLayoutCreateInfo descriptorSetInfo{};
-		descriptorSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		descriptorSetInfo.pBindings = bindings;
-		descriptorSetInfo.bindingCount = count;
+	void init(VkDescriptorSetLayoutBinding* bindings, uint32_t count);
 
-		if (vkCreateDescriptorSetLayout(device, &descriptorSetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
-			throw std::runtime_error("failed to create descriptor set layout");
-	}
-
-	void Release()
+	void release()
 	{
 		VulkanObjectReleased();
 		vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, nullptr);
 	}
-	VkDescriptorSetLayout& GetDescriptorSetLayout() { return m_descriptorSetLayout; }
+	VkDescriptorSetLayout& getDescriptorSetLayout() { return m_descriptorSetLayout; }
 		
 private:
 	VkDevice* m_device;
@@ -39,12 +28,12 @@ private:
 class DescriptorPool
 {
 public:
-	void Init(VkDevice& device, VkDescriptorPoolSize* pools, uint32_t poolsCount);
-	void Release()
+	void init(VkDevice& device, VkDescriptorPoolSize* pools, uint32_t poolsCount);
+	void release()
 	{
 		vkDestroyDescriptorPool(*m_device, m_descriptorPool, nullptr);
 	}
-	VkDescriptorPool& GetDescriptorPool() { return m_descriptorPool; }
+	VkDescriptorPool& getDescriptorPool() { return m_descriptorPool; }
 private:
 	VkDevice* m_device;
 	VkDescriptorPool m_descriptorPool;
@@ -53,13 +42,12 @@ private:
 class DescriptorSet
 {
 public:
-	void Init(VkDevice& device, uint32_t descriptorSetCount, VkDescriptorSetLayout layout, VkDescriptorPool& pool);
-	void UpdateDescriptors(VkWriteDescriptorSet* writes, uint32_t count);
-	void Release()
-	{}
-	VkWriteDescriptorSet GetWriteDescriptor(uint32_t index, VkDescriptorImageInfo imageInfo, VkDescriptorType type);
-	VkWriteDescriptorSet GetWriteDescriptor(uint32_t index, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type);
-	VkDescriptorSet& GetDescriptorSet(uint32_t index) { return m_descriptorSet[index]; }
+	void init(uint32_t descriptorSetCount, VkDescriptorSetLayout layout);
+	void updateDescriptors(VkWriteDescriptorSet* writes, uint32_t count);
+
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, VkDescriptorImageInfo imageInfo, VkDescriptorType type);
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type);
+	VkDescriptorSet& getDescriptorSet(uint32_t index) { return m_descriptorSet[index]; }
 private:
 	VkDevice* m_device;
 	std::vector<VkDescriptorSet> m_descriptorSet;

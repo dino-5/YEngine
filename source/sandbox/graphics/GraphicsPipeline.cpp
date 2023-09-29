@@ -5,7 +5,9 @@
 #include "math.h"
 #include "../Geometry.h"
 #include "SwapChain.h"
+#include "GraphicsModule.h"
 
+using namespace graphics;
 
 std::vector<char> ReadFile(const std::string& filename)
 {
@@ -53,11 +55,11 @@ VkPipelineShaderStageCreateInfo CreateShaderStageInfo(VkShaderModule shaderModul
 	return ShaderStageInfo;
 }
 
-void GraphicsPipeline::Init(VkDevice& device, SwapChain& swapChain, VkDescriptorSetLayout* layouts, uint32_t layoutsCount)
+void GraphicsPipeline::init(VkDescriptorSetLayout* layouts, uint32_t layoutsCount)
 {
-	m_device = &device;
-	m_vertexShader = CreateShader("shaders/bin/vert.spv", device);
-	m_fragmentShader = CreateShader("shaders/bin/frag.spv", device);
+	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	m_vertexShader = CreateShader("shaders/bin/vert.spv", *m_device);
+	m_fragmentShader = CreateShader("shaders/bin/frag.spv", *m_device);
 	
 	auto vertShaderStageInfo = CreateShaderStageInfo(m_vertexShader, ShaderType::VERTEX);
 	auto fragShaderStageInfo = CreateShaderStageInfo(m_fragmentShader, ShaderType::FRAGMENT);
@@ -141,7 +143,7 @@ void GraphicsPipeline::Init(VkDevice& device, SwapChain& swapChain, VkDescriptor
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 
-	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) 
+	if (vkCreatePipelineLayout(*m_device, &pipelineLayoutInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) 
 		throw std::runtime_error("failed to create pipeline layout!");
 
 	VkPipelineDepthStencilStateCreateInfo depthStencilState{};
@@ -169,11 +171,11 @@ void GraphicsPipeline::Init(VkDevice& device, SwapChain& swapChain, VkDescriptor
 	pipelineCreateInfo.pColorBlendState = &colorBlending;
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 	pipelineCreateInfo.layout = m_pipelineLayout;
-	pipelineCreateInfo.renderPass = swapChain.GetRenderPass();
+	pipelineCreateInfo.renderPass = GraphicsModule::GetInstance()->getSwapChain().getRenderPass();
 	pipelineCreateInfo.subpass = 0;
 	pipelineCreateInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
 	pipelineCreateInfo.basePipelineIndex = -1; // Optional
 	
-	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS)
+	if (vkCreateGraphicsPipelines(*m_device, VK_NULL_HANDLE, 1, &pipelineCreateInfo, nullptr, &m_pipeline) != VK_SUCCESS)
 		throw std::runtime_error("failed to create graphics pipeline");
 }

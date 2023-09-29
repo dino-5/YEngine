@@ -1,10 +1,16 @@
 #include "Model.h"
+#include "graphics/GraphicsModule.h"
 
-void Model::Init(VkDevice& device, VkPhysicalDevice& physicaldevice, VkCommandPool& cmdPool, VkQueue& queue,
-	const std::string& pathToPixels, TextureCreateInfo info, const std::string& pathToModel)
+using namespace graphics;
+
+void Model::init(const std::string& pathToPixels, TextureCreateInfo info, const std::string& pathToModel)
 {
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkPhysicalDevice& physicalDevice = GraphicsModule::GetInstance()->getDevice().getPhysicalDevice().getDevice();
+	VkQueue& graphicsQueue = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getGraphicsQueue();
+	VkCommandPool& cmdPool = GraphicsModule::GetInstance()->getCommandPool().getPool();
 	for(uint32_t i=0; i<3;i++)
-		m_texture[i].Init(device, physicaldevice, cmdPool, queue, pathToPixels, info);
+		m_texture[i].init(pathToPixels, info);
 
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;

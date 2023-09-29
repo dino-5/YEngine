@@ -1,15 +1,21 @@
 #pragma once
 #include <stdexcept>
+#include <memory>
 #include "../common.h"
 #include "Buffers.h"
-#include <memory>
+#include "GraphicsModule.h"
 
-void Buffer::CopyMemory(void* data) {
+using namespace graphics;
+
+void Buffer::copyMemory(void* data) {
 	memcpy(m_mappedMemory, data, m_bufferSize);
 }
 
-void CopyBuffers(VkDevice& device, VkCommandPool& cmdPool, VkQueue queue, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+void copyBuffers(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkCommandPool& cmdPool = GraphicsModule::GetInstance()->getCommandPool().getPool();
+	VkQueue queue = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getGraphicsQueue();
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -59,11 +65,11 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, V
 	throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void Buffer::Init(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t sizeOfBuffer, VkBufferUsageFlags bufferUsage,
-	              VkMemoryPropertyFlags memoryProperties)
+void Buffer::init( uint32_t sizeOfBuffer, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memoryProperties)
 {
 	VulkanObjectInitialized();
-	m_device = &device;
+	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkPhysicalDevice physicalDevice = GraphicsModule::GetInstance()->getDevice().getPhysicalDevice().getDevice();
 	m_bufferSize = sizeOfBuffer;
 	VkBufferCreateInfo bufferInfo{};
 	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -89,38 +95,35 @@ void Buffer::Init(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t s
 
 }
 
-void Buffer::InitAsStagingBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, uint32_t sizeOfBuffer, void* data)
+void Buffer::initAsStagingBuffer(uint32_t sizeOfBuffer, void* data)
 {
-
-	Init(device, physicalDevice,  sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+	init(sizeOfBuffer, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	MapMemory(0);
-	CopyMemory(data);
-	UnmapMemory();
+	mapMemory(0);
+	copyMemory(data);
+	unmapMemory();
 }
 
-void Buffer::InitAsVertexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, VkCommandPool& cmdPool, VkQueue queue,
-	uint32_t sizeOfBuffer, void* data)
+void Buffer::initAsVertexBuffer(uint32_t sizeOfBuffer, void* data)
 {
 	Buffer stagingBuffer;
-	stagingBuffer.InitAsStagingBuffer(device, physicalDevice,  sizeOfBuffer, data);
+	stagingBuffer.initAsStagingBuffer( sizeOfBuffer, data);
 
-	Init(device, physicalDevice, sizeOfBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	init(sizeOfBuffer, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	CopyBuffers(device, cmdPool, queue, stagingBuffer.m_buffer, m_buffer, static_cast<VkDeviceSize>(sizeOfBuffer));
-	stagingBuffer.Release();
+	copyBuffers(stagingBuffer.m_buffer, m_buffer, static_cast<VkDeviceSize>(sizeOfBuffer));
+	stagingBuffer.release();
 }
 
-void Buffer::InitAsIndexBuffer(VkDevice& device, VkPhysicalDevice& physicalDevice, VkCommandPool& cmdPool, VkQueue queue,
-	uint32_t sizeOfBuffer, void* data)
+void Buffer::initAsIndexBuffer(uint32_t sizeOfBuffer, void* data)
 {
 	Buffer stagingBuffer;
-	stagingBuffer.InitAsStagingBuffer(device, physicalDevice,  sizeOfBuffer, data);
+	stagingBuffer.initAsStagingBuffer(sizeOfBuffer, data);
 
-	Init(device, physicalDevice, sizeOfBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+	init(sizeOfBuffer, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	CopyBuffers(device, cmdPool, queue, stagingBuffer.m_buffer, m_buffer, static_cast<VkDeviceSize>(sizeOfBuffer));
-	stagingBuffer.Release();
+	copyBuffers(stagingBuffer.m_buffer, m_buffer, static_cast<VkDeviceSize>(sizeOfBuffer));
+	stagingBuffer.release();
 }

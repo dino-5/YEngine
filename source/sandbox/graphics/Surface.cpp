@@ -9,7 +9,7 @@
 #include <vulkan/vulkan_win32.h>
 #include "../system/Window.h"
 
-void Surface::Init()
+void Surface::init()
 {
 	Window* window = Window::GetWindow();
 	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo{};
@@ -21,7 +21,7 @@ void Surface::Init()
 		throw std::runtime_error("failed to create surface");
 }
 
-void Surface::Release()
+void Surface::release()
 {
 	vkDestroySurfaceKHR(VulkanInstance::GetInstance(), m_surface, nullptr);
 }

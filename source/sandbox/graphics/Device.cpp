@@ -53,7 +53,7 @@ bool isPhysicalDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
 	bool isSwapChainSuitable = false;
 	if (isRequiredExtensionsSupported)
-		isSwapChainSuitable = QuerySwapChainSupport(device, surface).isSuitable();
+		isSwapChainSuitable = querySwapChainSupport(device, surface).isSuitable();
 
 	return isRequiredExtensionsSupported && properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
 		&& features.geometryShader && indices.IsComplete() && isSwapChainSuitable && features.samplerAnisotropy;
@@ -69,7 +69,7 @@ void PrintPhysicalDevices(const std::vector<VkPhysicalDevice>& devices)
 	}
 }
 
-void PhysicalDevice::Init(VkSurfaceKHR surface)
+void PhysicalDevice::init(VkSurfaceKHR surface)
 {
 	uint32_t deviceCount = 0;
 	VkInstance instance = VulkanInstance::GetInstance();
@@ -95,7 +95,7 @@ void PhysicalDevice::Init(VkSurfaceKHR surface)
 }
 
 
-void LogicalDevice::Init(VkPhysicalDevice& physicalDevice, VkSurfaceKHR surface)
+void LogicalDevice::init(VkPhysicalDevice& physicalDevice, VkSurfaceKHR surface)
 {
 	QueueFamilyIndices indices = FindQueueFamilies(physicalDevice, surface);
 

@@ -17,45 +17,47 @@ struct SwapChainSupportDetails {
 
 const constexpr int MAX_FRAMES_IN_FLIGHT =2 ;
 
-SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+
+class Device;
+class Surface;
+class CommandPool;
 
 class SwapChain
 {
 public:
 
-	void Init(VkPhysicalDevice& physicalDevice, VkDevice& device, VkSurfaceKHR& surface, VkQueue& queue,
-		VkCommandPool& cmdPool);
-	void Reset(VkQueue& queue, VkCommandPool& cmdPool)
+	void init(Device& device, Surface& surface);
+	void reset()
 	{
 		vkDeviceWaitIdle(*m_device);
-		Release();
-		Create(queue, cmdPool);
+		release();
+		create();
 	}
-	void Create(VkQueue& queue, VkCommandPool& cmdPool)
+	void create()
 	{
-		QuerySwapChainProperties();
-		CreateSwapChain();
-		CreateSwapChainImageViews();
-		m_renderPass.Init(*m_device, m_surfaceFormat.format);
+		querySwapChainProperties();
+		createSwapChain();
+		createSwapChainImageViews();
+		m_renderPass.init(*m_device, m_surfaceFormat.format);
 		TextureCreateInfo depthInfo{
 			.format = VK_FORMAT_D24_UNORM_S8_UINT,
 			.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
 			.aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT
 		};
 		for(int i=0; i<3; i++)
-			m_depthBuffer[i].InitAsDepthBuffer(*m_device, *m_physicalDevice, cmdPool, queue,
-				s_viewport.width, s_viewport.height, depthInfo);
-		CreateFrameBuffers();
+			m_depthBuffer[i].initAsDepthBuffer(s_viewport.width, s_viewport.height, depthInfo);
+		createFrameBuffers();
 	}
-	float GetAspectRatio() {
+	float getAspectRatio() {
 		return m_extent.width / m_extent.height;
 	}
-	void Release()
+	void release()
 	{
 		for(auto& depthBuffer : m_depthBuffer)
-			depthBuffer.Release();
+			depthBuffer.release();
 
-		m_renderPass.Release();
+		m_renderPass.release();
 		for (auto imageView : m_imageViews) 
 			vkDestroyImageView(*m_device, imageView, nullptr);
 
@@ -65,39 +67,38 @@ public:
 		vkDestroySwapchainKHR(*m_device, m_swapChain, nullptr);
 	}
 
-	int GetCurrentFrameBufferIndex(VkSemaphore& semaphore, VkQueue& queue, VkCommandPool& cmdPool)
+	int getCurrentFrameBufferIndex(VkSemaphore& semaphore)
 	{
 		uint32_t index;
 		VkResult result = vkAcquireNextImageKHR(*m_device, m_swapChain, UINT64_MAX, semaphore, VK_NULL_HANDLE, &index);
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || m_isResized)
 		{
 			m_isResized = false;
-			Reset(queue, cmdPool);
+			reset();
 			return -1;
 		}
 		else if (result != VK_SUCCESS)
 			throw std::runtime_error("failed to acquire swap chain image");
 		return index;
 	}
-	void SetIsResized(bool fl) { m_isResized = true; }
-	VkSwapchainKHR& GetSwapChain() { return m_swapChain; }
-	VkRenderPassBeginInfo GetRenderPassBeginInfo(uint32_t index);
-	VkFormat GetFormat() { return m_surfaceFormat.format; }
-	VkExtent2D GetExtent() { return m_extent; }
-	VkRenderPass& GetRenderPass(){ return m_renderPass.GetRenderPass(); }
-	static VkViewport& GetViewport() {
+	void setIsResized(bool fl) { m_isResized = true; }
+	VkSwapchainKHR& getSwapChain() { return m_swapChain; }
+	VkRenderPassBeginInfo getRenderPassBeginInfo(uint32_t index);
+	VkFormat getFormat() { return m_surfaceFormat.format; }
+	VkExtent2D getExtent() { return m_extent; }
+	VkRenderPass& getRenderPass(){ return m_renderPass.getRenderPass(); }
+	static VkViewport& getViewport() {
 		return s_viewport;
 	}
 
-	static VkRect2D& GetScissorRect() {
+	static VkRect2D& getScissorRect() {
 		return s_scissorRect;
 	}
 private:
-	void QuerySwapChainProperties();
-	void CreateSwapChainImageViews();
-	void CreateSwapChain();
-	void ConfigureViewport();
-	void CreateFrameBuffers();
+	void querySwapChainProperties();
+	void createSwapChainImageViews();
+	void createSwapChain();
+	void createFrameBuffers();
 
 private:
 	static inline VkClearValue s_clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
