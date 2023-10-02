@@ -29,6 +29,10 @@
 
 #include "system/Window.h"
 
+#include "imgui/imgui.h"
+#include "imgui/backends/imgui_impl_glfw.h"
+#include "imgui/backends/imgui_impl_vulkan.h"
+
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 
 struct UniformBufferObject
@@ -87,7 +91,7 @@ private:
 	{
 		constexpr uint32_t numberOfPools = 2;
 		VkDescriptorPoolSize poolSizes[numberOfPools] = { {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT} ,
-			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT*3 }
+			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT*4 }
 		};
 		graphics::GraphicsModuleCreateInfo createInfo
 		{
@@ -95,6 +99,7 @@ private:
 			.poolSizes = poolSizes
 		};
 		m_graphicsModule = graphics::GraphicsModule::CreateGraphicsModule(createInfo);
+		ImGuiManager::Initialize();
 
 		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
 		samplerLayoutBinding.binding = 1;
@@ -165,6 +170,23 @@ private:
 		m_uniformBuffer[m_currentFrame].copyMemory(&m_transform);
 	}
 
+	ImDrawData* drawImgui()
+	{
+
+		//ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+		//ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+		//ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+		//ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+		//if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+		//	counter++;
+		//ImGui::SameLine();
+		//ImGui::Text("counter = %d", counter);
+		//ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+		//ImGui::End();
+		//ImGui::Render();
+		//return ImGui::GetDrawData();
+	}
+
 	void drawFrame()
 	{
 		updateUniformBuffer();
@@ -173,6 +195,8 @@ private:
 		if (imageIndexT == -1)
 			return;
 		uint32_t imageIndex = static_cast<uint32_t>(imageIndexT);
+
+
 		m_graphicsModule->resetFences(m_currentFrame);
 		m_cmdBuffer.reset(m_currentFrame);
 		m_cmdBuffer.beginRenderPass(m_graphicsModule->getSwapChain().getRenderPassBeginInfo(imageIndex), m_currentFrame);
@@ -185,6 +209,7 @@ private:
 		m_cmdBuffer.bindVertexBuffers(m_currentFrame, &m_vertexBuffer.getBuffer(), offsets, 1);
 		m_cmdBuffer.bindIndexBuffers(m_currentFrame, m_indexBuffer.getBuffer());
 		m_cmdBuffer.drawIndexed(m_currentFrame, m_indices.size());
+		//ImGui_ImplVulkan_RenderDrawData(draw_data, m_cmdBuffer.getCmdBuffer(m_currentFrame));
 		m_cmdBuffer.endRenderPass(m_currentFrame);
 
 		m_graphicsModule->submit(m_currentFrame, &m_cmdBuffer.getCmdBuffer(m_currentFrame));
@@ -203,6 +228,7 @@ private:
 		}
 		m_pipeline.Release();
 		m_descriptorSetLayout.release();
+		ImGuiManager::Release();
 		m_graphicsModule->release();
 		m_window.release();
 	}

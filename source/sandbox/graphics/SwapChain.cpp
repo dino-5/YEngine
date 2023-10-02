@@ -149,10 +149,9 @@ void SwapChain::init(Device& device, Surface& surface)
 
 void SwapChain::createSwapChainImageViews()
 {
-	uint32_t imageCount;
-	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &imageCount, nullptr);
-	m_images.resize(imageCount);
-	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &imageCount, m_images.data());
+	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &m_imageCount, nullptr);
+	m_images.resize(m_imageCount);
+	vkGetSwapchainImagesKHR(*m_device, m_swapChain, &m_imageCount, m_images.data());
 
 	m_imageViews.resize(m_images.size());
 	for (size_t i = 0; i < m_images.size(); i++) {

@@ -87,6 +87,7 @@ public:
 	VkFormat getFormat() { return m_surfaceFormat.format; }
 	VkExtent2D getExtent() { return m_extent; }
 	VkRenderPass& getRenderPass(){ return m_renderPass.getRenderPass(); }
+	uint32_t getImageCount() { return m_imageCount; }
 	static VkViewport& getViewport() {
 		return s_viewport;
 	}

@@ -36,6 +36,7 @@ public:
 	bool isWindowShouldBeClosed() { return glfwWindowShouldClose(m_window); }
 	HWND GetWindowHandle();
 	HINSTANCE GetInstance();
+	GLFWwindow* getWindow() { return m_window; }
 private:
 	GLFWwindow* m_window = nullptr;
 	uint m_width = 0;

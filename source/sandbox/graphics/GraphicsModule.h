@@ -8,6 +8,8 @@
 #include "SwapChain.h"
 #include "../common.h"
 
+#include "imgui/imgui.h"
+
 #include <memory>
 namespace graphics
 {
@@ -42,6 +44,7 @@ namespace graphics
 		geterGraphicsComponent(CommandPool, m_cmdPool)
 		geterGraphicsComponent(DescriptorPool, m_descriptorPool)
 		geterGraphicsComponent(SwapChain, m_swapChain)
+		geterGraphicsComponent(Surface, m_surface)
 
 		void createSyncObjects();
 		void swapChainInit();

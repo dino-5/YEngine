@@ -1,18 +1,21 @@
 #pragma once
 
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_vulkan.h"
+#include <vector>
+#include <vulkan/vulkan.h>
 
-class ImGui
+struct ImGuiIO;
+
+class ImGuiManager
 {
 public:
-	static ImGui* GetInstance()
-	{
-		return s_instance;
-	}
 	static void Initialize();
+	static void Release();
+	static void StartFrame();
+	static void Draw(VkCommandBuffer& cmdBuffer);
 private:
-	static inline ImGui* s_instance = nullptr;
+	static void drawInternal();
+
+	static inline ImGuiIO* io = nullptr;
+	//static std::vector<>;
 };
 

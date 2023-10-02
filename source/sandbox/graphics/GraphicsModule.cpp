@@ -1,4 +1,6 @@
 #include "GraphicsModule.h"
+#include "Queue.h"
+#include "../system/Window.h"
 
 using namespace graphics;
 
