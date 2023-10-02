@@ -52,6 +52,7 @@ void Texture::release()
 	vkDestroyImageView(device, m_view, nullptr);
 	vkDestroyImage(device, m_image, nullptr);
 	vkFreeMemory(device, m_imageMemory, nullptr);
+	m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 void Texture::initAsTexture(const std::string& path, TextureCreateInfo textureInfo)
