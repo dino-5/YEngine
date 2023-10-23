@@ -55,19 +55,22 @@ VkPipelineShaderStageCreateInfo CreateShaderStageInfo(VkShaderModule shaderModul
 	return ShaderStageInfo;
 }
 
-void GraphicsPipeline::init(VkDescriptorSetLayout* layouts, uint32_t layoutsCount)
+void GraphicsPipeline::init(GraphicsPipelineCreateInfo createInfo)
 {
 	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
-	m_vertexShader = CreateShader("shaders/bin/vert.spv", *m_device);
-	m_fragmentShader = CreateShader("shaders/bin/frag.spv", *m_device);
+	m_vertexShader = CreateShader(createInfo.vertexShader, *m_device);
+	m_fragmentShader = CreateShader(createInfo.fragmentShader, *m_device);
+	m_descriptorSetLayouts.resize(createInfo.layoutCount);
+	for(uint32_t i=0; i<createInfo.layoutCount; ++i)
+		m_descriptorSetLayouts[i].init(createInfo.layoutCreateInfo[i]);
 	
 	auto vertShaderStageInfo = CreateShaderStageInfo(m_vertexShader, ShaderType::VERTEX);
 	auto fragShaderStageInfo = CreateShaderStageInfo(m_fragmentShader, ShaderType::FRAGMENT);
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	std::vector<VkDynamicState> dynamicStates = {
-	VK_DYNAMIC_STATE_VIEWPORT,
-	VK_DYNAMIC_STATE_SCISSOR
+		VK_DYNAMIC_STATE_VIEWPORT,
+		VK_DYNAMIC_STATE_SCISSOR
 	};
 
 	VkPipelineDynamicStateCreateInfo dynamicState{};
@@ -138,8 +141,9 @@ void GraphicsPipeline::init(VkDescriptorSetLayout* layouts, uint32_t layoutsCoun
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutInfo.setLayoutCount = layoutsCount; // Optional
-	pipelineLayoutInfo.pSetLayouts = layouts; // Optional
+	pipelineLayoutInfo.setLayoutCount = createInfo.layoutCount; // Optional
+	pipelineLayoutInfo.pSetLayouts =
+		reinterpret_cast<VkDescriptorSetLayout*>(m_descriptorSetLayouts.data()); // Optional
 	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
 	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
 

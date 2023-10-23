@@ -6,22 +6,26 @@
 
 uint32_t GetNumberOfDescriptors(VkDescriptorPoolSize* pools, uint32_t poolsCount);
 
+struct DescriptorSetLayoutCreateInfo
+{
+	VkDescriptorSetLayoutBinding* bindings;
+	uint32_t count;
+	DescriptorSetLayoutCreateInfo(VkDescriptorSetLayoutBinding* t_bindings, uint32_t t_count) :
+		bindings(t_bindings),
+		count(t_count)
+	{}
+};
+
 class DescriptorSetLayout
 {
 public:
-	DesctructorVulkanObject(DescriptorSetLayout)
+	void init(DescriptorSetLayoutCreateInfo createInfo);
 
-	void init(VkDescriptorSetLayoutBinding* bindings, uint32_t count);
-
-	void release()
-	{
-		VulkanObjectReleased();
-		vkDestroyDescriptorSetLayout(*m_device, m_descriptorSetLayout, nullptr);
-	}
+	void release();
 	VkDescriptorSetLayout& getDescriptorSetLayout() { return m_descriptorSetLayout; }
+	operator VkDescriptorSetLayout() { return m_descriptorSetLayout; }
 		
 private:
-	VkDevice* m_device;
 	VkDescriptorSetLayout m_descriptorSetLayout;
 };
 
@@ -42,11 +46,11 @@ private:
 class DescriptorSet
 {
 public:
-	void init(uint32_t descriptorSetCount, VkDescriptorSetLayout layout);
+	void init(uint32_t descriptorSetCount, DescriptorSetLayout layout);
 	void updateDescriptors(VkWriteDescriptorSet* writes, uint32_t count);
 
 	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, VkDescriptorImageInfo imageInfo, VkDescriptorType type);
-	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type);
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type);
 	VkDescriptorSet& getDescriptorSet(uint32_t index) { return m_descriptorSet[index]; }
 private:
 	VkDevice* m_device;

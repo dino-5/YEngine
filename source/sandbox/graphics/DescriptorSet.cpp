@@ -12,17 +12,22 @@ uint32_t GetNumberOfDescriptors(VkDescriptorPoolSize* pools, uint32_t poolsCount
 	return numberOfSets;
 }
 
-void DescriptorSetLayout::init(VkDescriptorSetLayoutBinding* bindings, uint32_t count)
+void DescriptorSetLayout::init(DescriptorSetLayoutCreateInfo createInfo)
 {
-	VulkanObjectInitialized();
-	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	VkDevice device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
 	VkDescriptorSetLayoutCreateInfo descriptorSetInfo{};
 	descriptorSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorSetInfo.pBindings = bindings;
-	descriptorSetInfo.bindingCount = count;
+	descriptorSetInfo.pBindings = createInfo.bindings;
+	descriptorSetInfo.bindingCount = createInfo.count;
 
-	if (vkCreateDescriptorSetLayout(*m_device, &descriptorSetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
+	if (vkCreateDescriptorSetLayout(device, &descriptorSetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
 		throw std::runtime_error("failed to create descriptor set layout");
+}
+
+void DescriptorSetLayout::release()
+{
+	VkDevice device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	vkDestroyDescriptorSetLayout(device, m_descriptorSetLayout, nullptr);
 }
 
 
@@ -41,11 +46,11 @@ void DescriptorPool::init(VkDevice& device, VkDescriptorPoolSize* pools, uint32_
 }
 
 
-void DescriptorSet::init(uint32_t descriptorSetCount, VkDescriptorSetLayout layout)
+void DescriptorSet::init(uint32_t descriptorSetCount, DescriptorSetLayout layout)
 {
 	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
 	VkDescriptorPool& pool = GraphicsModule::GetInstance()->getDescriptorPool().getDescriptorPool();
-	std::vector<VkDescriptorSetLayout> layouts(descriptorSetCount, layout);
+	std::vector<VkDescriptorSetLayout> layouts(descriptorSetCount, layout.getDescriptorSetLayout());
 	VkDescriptorSetAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = pool;
@@ -57,12 +62,12 @@ void DescriptorSet::init(uint32_t descriptorSetCount, VkDescriptorSetLayout layo
 		throw std::runtime_error("failed to allocate descriptor sets");
 }
 
-VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type)
+VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type)
 {
 	VkWriteDescriptorSet descriptorWrite{};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrite.dstSet = m_descriptorSet[index];
-	descriptorWrite.dstBinding = 0;
+	descriptorWrite.dstBinding = binding;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = type;
 	descriptorWrite.descriptorCount = 1;

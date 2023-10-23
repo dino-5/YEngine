@@ -43,9 +43,13 @@ public:
 		vkCmdBindIndexBuffer(m_cmdBuffer[index], buffer, 0, VK_INDEX_TYPE_UINT32);
 	}
 
-	void bindDescriptorSet(uint32_t index, VkPipelineLayout pipelineLayout, VkDescriptorSet& descriptor)
+	void bindDescriptorSet(uint32_t index, VkPipelineLayout pipelineLayout,
+		VkDescriptorSet* descriptorSets, uint32_t numberOfSets)
 	{
-		vkCmdBindDescriptorSets(m_cmdBuffer[index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptor, 0, nullptr);
+		vkCmdBindDescriptorSets(
+			m_cmdBuffer[index], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 
+			0, numberOfSets, descriptorSets,
+			0, nullptr);
 	}
 
 	void draw(uint32_t index)
