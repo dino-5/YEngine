@@ -30,6 +30,8 @@ public:
 	}
 	void init(const char* name, uint width, uint height);
 	void setWindowResizeCallback(GLFWframebuffersizefun ptr);
+	void setCursorPositionCallback(GLFWcursorposfun callback);
+	void setKeyInputCallback(GLFWkeyfun callback);
 	void release();
 	void update();
 	void GetFrameBufferSize(int& width, int& height) { glfwGetFramebufferSize(m_window, &width, &height); }

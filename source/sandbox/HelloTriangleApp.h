@@ -27,6 +27,7 @@
 #include "graphics/GraphicsModule.h"
 
 #include "Model.h"
+#include "Camera.h"
 
 #include "system/Window.h"
 
@@ -35,6 +36,8 @@
 #include "imgui/backends/imgui_impl_vulkan.h"
 
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
+void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 
 struct UniformLightingStruct
@@ -96,6 +99,8 @@ public:
 		cleanup();
 	}
 
+	void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
+	void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	void SetIsResized(bool fl)
 	{
 		m_graphicsModule->getSwapChain().setIsResized(fl);
@@ -109,9 +114,12 @@ private:
 
 		m_window.init("Vulkan window", WIDTH, HEIGHT);
 		m_window.setWindowResizeCallback(FrameBufferResizeCallback);
+		m_window.setCursorPositionCallback(::cursorPositionCallback);
+		m_window.setKeyInputCallback(::keyInputCallback);
 	}
 	void initVulkan()
 	{
+		m_camera.init(WIDTH / HEIGHT);
 		constexpr uint32_t numberOfPools = 2;
 		VkDescriptorPoolSize poolSizes[numberOfPools] = {
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT*3} ,
@@ -255,6 +263,8 @@ private:
 		m_model.update();
 		m_lightingModel.update();
 
+		m_model.m_uniformObject.view = m_camera.getView();
+		m_lightingModel.m_uniformObject.view = m_camera.getView();
 		m_uniformBuffer[m_currentFrame].copyMemory(&m_model.m_uniformObject);
 		m_lightingBuffer[m_currentFrame].copyMemory(&m_lightingModel.m_position);
 		m_lightingModelBuffer[m_currentFrame].copyMemory(&m_lightingModel.m_uniformObject);
@@ -332,5 +342,6 @@ private:
 	uint32_t m_currentFrame = 0;
 	Model m_model;
 	Model m_lightingModel;
+	Camera m_camera;
 };
 

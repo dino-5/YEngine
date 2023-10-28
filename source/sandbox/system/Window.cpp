@@ -21,6 +21,16 @@ void Window::setWindowResizeCallback(GLFWframebuffersizefun ptr)
 	glfwSetFramebufferSizeCallback(m_window, ptr);
 }
 
+void Window::setCursorPositionCallback(GLFWcursorposfun callback)
+{
+	glfwSetCursorPosCallback(m_window, callback);
+}
+
+void Window::setKeyInputCallback(GLFWkeyfun callback)
+{
+	glfwSetKeyCallback(m_window, callback);
+}
+
 HWND Window::GetWindowHandle()
 {
 	return glfwGetWin32Window(m_window);
