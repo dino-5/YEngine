@@ -1,7 +1,7 @@
 #pragma once
 #include <stdexcept>
 #include <memory>
-#include "../common.h"
+#include "YEngine_System/common.h"
 #include "Buffers.h"
 #include "GraphicsModule.h"
 

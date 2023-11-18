@@ -7,7 +7,7 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 #include <vulkan/vulkan_win32.h>
-#include "../system/Window.h"
+#include "YEngine_System/system/Window.h"
 
 void Surface::init()
 {

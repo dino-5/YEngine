@@ -2,7 +2,7 @@
 #include <vulkan/vulkan.h>
 #include <stdexcept>
 #include <vector>
-#include "../common.h"
+#include "YEngine_System/common.h"
 
 uint32_t GetNumberOfDescriptors(VkDescriptorPoolSize* pools, uint32_t poolsCount);
 

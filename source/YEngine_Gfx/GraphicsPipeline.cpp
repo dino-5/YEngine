@@ -3,7 +3,7 @@
 
 #include "GraphicsPipeline.h"
 #include "math.h"
-#include "../Geometry.h"
+#include "YEngine_System/Geometry.h"
 #include "SwapChain.h"
 #include "GraphicsModule.h"
 

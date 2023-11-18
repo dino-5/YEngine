@@ -6,7 +6,7 @@
 #include "DescriptorSet.h"
 #include "Surface.h"
 #include "SwapChain.h"
-#include "../common.h"
+#include "gfx_common.h"
 
 #include "imgui/imgui.h"
 

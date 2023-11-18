@@ -7,8 +7,8 @@
 #include <memory>
 
 #include "tiny_obj_loader.h"
-#include "graphics/Texture.h"
-#include "Geometry.h"
+#include "Texture.h"
+#include "YEngine_System/Geometry.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE

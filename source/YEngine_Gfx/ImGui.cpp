@@ -1,7 +1,7 @@
 #include "ImGui.h"
-#include "graphics/GraphicsModule.h"
-#include "graphics/Queue.h"
-#include "system/Window.h"
+#include "GraphicsModule.h"
+#include "Queue.h"
+#include "YEngine_System/system/Window.h"
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"

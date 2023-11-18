@@ -1,5 +1,5 @@
 #include "Model.h"
-#include "graphics/GraphicsModule.h"
+#include "GraphicsModule.h"
 #include "ImGui.h"
 
 using namespace graphics;

@@ -32,57 +32,6 @@ abstract class BaseSimpleLibraryProject : Project
         conf.ProjectPath = @"[project.SourceRootPath]";
     }
 }
-// The library project.
-[Generate]
-class YEngineProject : BaseSimpleLibraryProject
-{
-    public YEngineProject()
-    {
-        Name = "YEngine";
-        SourceRootPath = @"[project.SharpmakeCsPath]/../../source/YEngine";
-    }
-
-    public override void ConfigureAll(Project.Configuration conf, Target target)
-    {
-        base.ConfigureAll(conf, target);
-
-
-        // Sets the include path of the library. Those will be shared with any
-        // project that adds this one as a dependency. (The executable here.)
-        conf.IncludePaths.Add(@"[project.SourceRootPath]/..");
-
-        // The library wants LIBRARY_COMPILE defined when it compiles the
-        // library, so that it knows whether it must use dllexport or
-        // dllimport.
-        //conf.Defines.Add("LIBRARY_COMPILE");
-
-        if (target.OutputType == OutputType.Dll)
-        {
-            // We want this to output a shared library. (DLL)
-            conf.Output = Configuration.OutputType.Dll;
-
-            // This library project expects LIBRARY_DLL symbol to be defined
-            // when used as a DLL. While we could define it in the executable,
-            // it is better to put it as an exported define. That way, any
-            // projects with a dependency on this one will have LIBRARY_DLL
-            // automatically defined by Sharpmake.
-            //conf.ExportDefines.Add("LIBRARY_DLL");
-
-            // Exported defines are not necessarily defines as well, so we need
-            // to add LIBRARY_DLL as an ordinary define too.
-            //conf.Defines.Add("LIBRARY_DLL");
-        }
-        else if (target.OutputType == OutputType.Lib)
-        {
-            // We want this to output a static library. (LIB)
-            conf.Output = Configuration.OutputType.Lib;
-        }
-        conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
-        conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
-        conf.LibraryFiles.Add("vulkan-1.lib");
-        conf.Options.Add(Options.Vc.Compiler.CppLanguageStandard.CPP20);
-    }
-}
 
 [Generate]
 class ThirdPartyProject: BaseSimpleLibraryProject 
@@ -125,6 +74,112 @@ class ThirdPartyProject: BaseSimpleLibraryProject
     }
 
 }
+// The library project.
+[Generate]
+class YEngineGfxProject : BaseSimpleLibraryProject
+{
+    public YEngineGfxProject()
+    {
+        Name = "YEngine_Gfx";
+        SourceRootPath = @"[project.SharpmakeCsPath]/../../source/[project.Name]";
+    }
+
+    public override void ConfigureAll(Project.Configuration conf, Target target)
+    {
+        base.ConfigureAll(conf, target);
+
+
+        // Sets the include path of the library. Those will be shared with any
+        // project that adds this one as a dependency. (The executable here.)
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/..");
+
+        // The library wants LIBRARY_COMPILE defined when it compiles the
+        // library, so that it knows whether it must use dllexport or
+        // dllimport.
+        //conf.Defines.Add("LIBRARY_COMPILE");
+
+        if (target.OutputType == OutputType.Dll)
+        {
+            // We want this to output a shared library. (DLL)
+            conf.Output = Configuration.OutputType.Dll;
+
+            // This library project expects LIBRARY_DLL symbol to be defined
+            // when used as a DLL. While we could define it in the executable,
+            // it is better to put it as an exported define. That way, any
+            // projects with a dependency on this one will have LIBRARY_DLL
+            // automatically defined by Sharpmake.
+            //conf.ExportDefines.Add("LIBRARY_DLL");
+
+            // Exported defines are not necessarily defines as well, so we need
+            // to add LIBRARY_DLL as an ordinary define too.
+            //conf.Defines.Add("LIBRARY_DLL");
+        }
+        else if (target.OutputType == OutputType.Lib)
+        {
+            // We want this to output a static library. (LIB)
+            conf.Output = Configuration.OutputType.Lib;
+        }
+        conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/..");
+        conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
+        conf.LibraryFiles.Add("vulkan-1.lib");
+        conf.Options.Add(Options.Vc.Compiler.CppLanguageStandard.CPP20);
+        conf.AddPublicDependency<ThirdPartyProject>(target);
+    }
+}
+
+[Generate]
+class YEngineSystemProject : BaseSimpleLibraryProject
+{
+    public YEngineSystemProject()
+    {
+        Name = "YEngine_System";
+        SourceRootPath = @"[project.SharpmakeCsPath]/../../source/[project.Name]";
+    }
+
+    public override void ConfigureAll(Project.Configuration conf, Target target)
+    {
+        base.ConfigureAll(conf, target);
+
+
+        // Sets the include path of the library. Those will be shared with any
+        // project that adds this one as a dependency. (The executable here.)
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/..");
+
+        // The library wants LIBRARY_COMPILE defined when it compiles the
+        // library, so that it knows whether it must use dllexport or
+        // dllimport.
+        //conf.Defines.Add("LIBRARY_COMPILE");
+
+        if (target.OutputType == OutputType.Dll)
+        {
+            // We want this to output a shared library. (DLL)
+            conf.Output = Configuration.OutputType.Dll;
+
+            // This library project expects LIBRARY_DLL symbol to be defined
+            // when used as a DLL. While we could define it in the executable,
+            // it is better to put it as an exported define. That way, any
+            // projects with a dependency on this one will have LIBRARY_DLL
+            // automatically defined by Sharpmake.
+            //conf.ExportDefines.Add("LIBRARY_DLL");
+
+            // Exported defines are not necessarily defines as well, so we need
+            // to add LIBRARY_DLL as an ordinary define too.
+            //conf.Defines.Add("LIBRARY_DLL");
+        }
+        else if (target.OutputType == OutputType.Lib)
+        {
+            // We want this to output a static library. (LIB)
+            conf.Output = Configuration.OutputType.Lib;
+        }
+        conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
+        conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
+        conf.LibraryFiles.Add("vulkan-1.lib");
+        conf.Options.Add(Options.Vc.Compiler.CppLanguageStandard.CPP20);
+        conf.AddPublicDependency<ThirdPartyProject>(target);
+    }
+}
+
 
 [Generate]
 public class SandboxProject: Project
@@ -153,25 +208,14 @@ public class SandboxProject: Project
     [Configure]
     public void Configure(Configuration conf, Target target)
     {
-        conf.AddPublicDependency<YEngineProject>(target);
-        conf.AddPublicDependency<ThirdPartyProject>(target);
+        conf.AddPublicDependency<YEngineGfxProject>(target);
+        conf.AddPublicDependency<YEngineSystemProject>(target);
     }
 
 }
 
 
 
-// Sets the properties of each configuration (conf) according to the target.
-//
-// This method is called once for every target specified by AddTargets. Since
-// we only want vs2015 targets and we want 32- and 64-bit targets, each having
-// a debug and a release version, we have 1 x 2 x 2 targets to configure, so it
-// will be called 4 times.
-//
-// If we had instead specified vs2012 | vs2015 | vs2017 it would have been
-// called 12 times. (3 x 2 x 2)
-// Represents the solution that will be generated and that will contain the
-// project with the sample code.
 [Generate]
 public class YSolution : Solution
 {
@@ -203,7 +247,8 @@ public class YSolution : Solution
         //
         // You could, for example, exclude a project that only supports 64-bit
         // from the 32-bit targets.
-        conf.AddProject<YEngineProject>(target);
+        conf.AddProject<YEngineGfxProject>(target);
+        conf.AddProject<YEngineSystemProject>(target);
         conf.AddProject<SandboxProject>(target);
         conf.AddProject<ThirdPartyProject>(target);
     }
