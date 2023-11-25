@@ -12,7 +12,7 @@ void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
 
 void HelloTriangleApplication::cursorPositionCallback(GLFWwindow* window, double xpos, double ypos)
 {
-	
+	m_camera.parseMouseInput(window, xpos, ypos);
 }
 
 void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods)

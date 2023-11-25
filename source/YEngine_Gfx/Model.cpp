@@ -23,8 +23,8 @@ std::shared_ptr<Mesh> Mesh::CreateMesh(std::string a_name, const std::string& pa
 				Geometry::Vertex vertex{};
 				vertex.pos = {
 					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 2],
-					attrib.vertices[3 * index.vertex_index + 1]
+					attrib.vertices[3 * index.vertex_index + 1],
+					attrib.vertices[3 * index.vertex_index + 2]
 				};
 
 				vertex.uv = {
@@ -34,8 +34,8 @@ std::shared_ptr<Mesh> Mesh::CreateMesh(std::string a_name, const std::string& pa
 
 				vertex.normal = {
 					attrib.normals[3 * index.normal_index + 0],
-					attrib.normals[3 * index.normal_index + 2],
 					attrib.normals[3 * index.normal_index + 1],
+					attrib.normals[3 * index.normal_index + 2],
 				};
 
 				s_meshes[a_name]->m_vertices.push_back(vertex);
