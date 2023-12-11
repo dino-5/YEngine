@@ -11,6 +11,7 @@ enum class ImGuiType
 	FLOAT2,
 	FLOAT3,
 	FLOAT4,
+	BUTTON,
 };
 
 struct ImGuiEntry
@@ -22,6 +23,13 @@ struct ImGuiEntry
 	float max;
 };
 
+typedef void (*FunctionPtr)();
+struct ImGuiCallback
+{
+	const char* name;
+	bool* fl;
+};
+
 class ImGuiManager
 {
 public:
@@ -29,6 +37,7 @@ public:
 	static void Release();
 	static void StartFrame();
 	static void Draw(VkCommandBuffer& cmdBuffer);
+	static void AddButton(ImGuiCallback callback);
 
 	static void AddImGuiEntry(ImGuiEntry entry);
 private:
@@ -37,5 +46,6 @@ private:
 
 	static inline ImGuiIO* io = nullptr;
 	static inline std::vector<ImGuiEntry> s_entries;
+	static inline std::vector<ImGuiCallback> s_buttons;
 };
 

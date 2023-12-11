@@ -15,6 +15,11 @@ void HelloTriangleApplication::cursorPositionCallback(GLFWwindow* window, double
 	m_camera.parseMouseInput(window, xpos, ypos);
 }
 
+void reloadShaderCallback()
+{
+	HelloTriangleApplication::m_instance->reloadPipelines();
+}
+
 void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	HelloTriangleApplication::m_instance->keyInputCallback(window, key, scancode, action, mods);

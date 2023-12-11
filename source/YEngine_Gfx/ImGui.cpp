@@ -23,6 +23,11 @@ void ImGuiManager::Release()
     ImGui::DestroyContext();
 }
 
+void ImGuiManager::AddButton(ImGuiCallback callback)
+{
+    s_buttons.push_back(callback);
+}
+
 void ImGuiManager::Initialize()
 {
     IMGUI_CHECKVERSION();
@@ -91,20 +96,22 @@ void ImGuiManager::AddImGuiEntry(ImGuiEntry entry)
     s_entries.push_back(entry);
 }
 
-void ImGuiManager::displayEntry(ImGuiEntry entry)
-{
-    if (entry.type == ImGuiType::FLOAT3)
-        ImGui::SliderFloat3(entry.name, static_cast<float*>(entry.address), entry.min, entry.max);
-    else
-        throw std::runtime_error("unrecognized type");
-}
 
 void ImGuiManager::drawInternal()
 {
 	ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-    for (auto entry : s_entries)
+    for (auto& entry : s_entries)
     {
-        displayEntry(entry);
+		if (entry.type == ImGuiType::FLOAT3)
+			ImGui::SliderFloat3(entry.name, static_cast<float*>(entry.address), entry.min, entry.max);
+		else
+			throw std::runtime_error("unrecognized type");
+    }
+
+    for (auto& button : s_buttons)
+    {
+        if (ImGui::Button(button.name))
+            *(button.fl) = true;
     }
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io->Framerate, io->Framerate);
 	ImGui::End();

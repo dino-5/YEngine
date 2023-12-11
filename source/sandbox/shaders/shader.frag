@@ -15,8 +15,9 @@ layout( set=1, binding=0 ) uniform LightingStruct{
 //
 
 void main() {
-    vec3 lightVector = normalize(position - lighting.pos);
+    vec3 lightVector = normalize(lighting.pos - position);
     float cosineFactor= dot(lightVector, normal);
-    outColor = vec4(normal, 1.f);
-    outColor = clamp(cosineFactor, 0.f, 1.f) * texture(texSampler, fragUv);
+    outColor = vec4(lighting.pos, 1.f);
+	//return;
+	outColor = clamp(cosineFactor, 0.f, 1.f) * texture(texSampler, fragUv);
 }

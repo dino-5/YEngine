@@ -30,6 +30,7 @@
 #include "YEngine_System/Geometry.h"
 #include "YEngine_System/Camera.h"
 #include "YEngine_System/system/Window.h"
+#include "YEngine_System/system/Logger.h"
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_glfw.h"
@@ -38,7 +39,9 @@
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
+void reloadShaderCallback();
 
+constexpr uint32_t numberOfLayouts = 2;
 
 struct UniformLightingStruct
 {
@@ -79,7 +82,7 @@ struct PassInfo
 
 };
 
-class HelloTriangleApplication 
+class HelloTriangleApplication
 {
 public:
 	static inline HelloTriangleApplication* m_instance = nullptr;
@@ -106,6 +109,8 @@ public:
 		m_graphicsModule->getSwapChain().setIsResized(fl);
 	}
 
+	friend void reloadShaderCallback();
+
 private:
 	void initWindow()
 	{
@@ -117,18 +122,61 @@ private:
 		m_window.setCursorPositionCallback(::cursorPositionCallback);
 		m_window.setKeyInputCallback(::keyInputCallback);
 	}
+	void createPipelines()
+	{
+		{
+			m_pipelines["lighting"] = GraphicsPipeline();
+			m_descriptorSets["lighting"] = DescriptorSet();
+			m_descriptorSets["geometry"] = DescriptorSet();
+			GraphicsPipelineCreateInfo pipelineCreateInfo
+			{
+				.vertexShader = "shaders/bin/vert.spv" ,
+				.fragmentShader = "shaders/bin/frag.spv",
+				.layoutCreateInfo = layoutInfo,
+				.layoutCount = numberOfLayouts
+			};
+			m_pipelines["lighting"].init(pipelineCreateInfo);
+
+			m_descriptorSets["geometry1"].init(
+				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(0)
+			);
+			m_descriptorSets["geometry2"].init(
+				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(0)
+			);
+			m_descriptorSets["lighting"].init(
+				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(1)
+			);
+		}
+
+		{
+			m_pipelines["geometry"] = GraphicsPipeline();
+			GraphicsPipelineCreateInfo pipelineCreateInfo
+			{
+				.vertexShader = "shaders/bin/vert.spv" ,
+				.fragmentShader = "shaders/bin/simpleFrag.spv",
+				.layoutCreateInfo = layoutInfo,
+				.layoutCount = 1
+			};
+			m_pipelines["geometry"].init(pipelineCreateInfo);
+		}
+	}
+	void reloadPipelines()
+	{
+		m_pipelines["lighting"].reload();
+		m_pipelines["geometry"].reload();
+	}
 	void initVulkan()
 	{
 		m_camera.init(WIDTH / HEIGHT);
 		constexpr uint32_t numberOfPools = 2;
 		VkDescriptorPoolSize poolSizes[numberOfPools] = {
-			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT*3} ,
+			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT * 3} ,
 			{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT }
 		};
 		graphics::GraphicsModuleCreateInfo createInfo
 		{
 			.numberOfPools = numberOfPools,
-			.poolSizes = poolSizes
+				.poolSizes = poolSizes
 		};
 		m_graphicsModule = graphics::GraphicsModule::CreateGraphicsModule(createInfo);
 		ImGuiManager::Initialize();
@@ -157,49 +205,12 @@ private:
 			m_lighting.GetDescriptorSetBinding()
 		};
 
-		constexpr uint32_t numberOfLayouts = 2;
-		DescriptorSetLayoutCreateInfo layoutInfo[numberOfLayouts] =
-		{
-			{descBindings, 2},
-			{&descBindings[2], 1}
-		};
-		{
-			m_pipelines["lighting"] = GraphicsPipeline();
-			m_descriptorSets["lighting"] = DescriptorSet();
-			m_descriptorSets["geometry"] = DescriptorSet();
-			GraphicsPipelineCreateInfo pipelineCreateInfo
-			{
-				.vertexShader = "shaders/bin/vert.spv" ,
-				.fragmentShader = "shaders/bin/frag.spv",
-				.layoutCreateInfo = layoutInfo,
-				.layoutCount = numberOfLayouts 
-			};
-			m_pipelines["lighting"].init(pipelineCreateInfo);
+		layoutInfo[0] = { descBindings, 2 };
+		layoutInfo[1] = { &descBindings[2], 1 };
+		createPipelines();
+		ImGuiManager::AddButton({ "shader Reload", &m_shaderReload});
 
-			m_descriptorSets["geometry1"].init(
-				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(0)
-			);
-			m_descriptorSets["geometry2"].init(
-				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(0)
-			);
-			m_descriptorSets["lighting"].init(
-				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(1)
-			);
-		}
-
-		{
-			m_pipelines["geometry"] = GraphicsPipeline();
-			GraphicsPipelineCreateInfo pipelineCreateInfo
-			{
-				.vertexShader = "shaders/bin/vert.spv" ,
-				.fragmentShader = "shaders/bin/simpleFrag.spv",
-				.layoutCreateInfo = layoutInfo,
-				.layoutCount = 1
-			};
-			m_pipelines["geometry"].init(pipelineCreateInfo);
-		}
-
-		m_cmdBuffer.init( static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
+		m_cmdBuffer.init(static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
 
 
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -234,7 +245,7 @@ private:
 				m_descriptorSets["lighting"].updateDescriptors(
 					&descriptorSets[2], 1);
 			}
-			
+
 			{
 				VkWriteDescriptorSet descriptorSets[2];
 				descriptorSets[0] = m_descriptorSets["geometry2"].getWriteDescriptor(
@@ -247,13 +258,23 @@ private:
 					descriptorSets, 2);
 			}
 		}
+		Logger::PrintError("{} is greater then {}\n", 3, 4);
 	}
 
-	void mainLoop() 
+	void mainLoop()
 	{
 		while (!m_window.isWindowShouldBeClosed()) {
 			glfwPollEvents();
 			drawFrame();
+			Logger::Update();
+			if (m_shaderReload)
+			{
+				for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+					m_graphicsModule->waitForFences(i);
+				reloadPipelines();
+				m_currentFrame = 0;
+				m_shaderReload = false;
+			}
 		}
 		vkDeviceWaitIdle(m_graphicsModule->getDevice().getLogicalDevice().getDevice());
 	}
@@ -289,7 +310,7 @@ private:
 			m_descriptorSets["geometry2"].getDescriptorSet(m_currentFrame),
 		};
 		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["lighting"].GetPipelineLayout(),
-		         descriptorSets, 2);
+			descriptorSets, 2);
 		m_cmdBuffer.setViewport(SwapChain::getViewport(), m_currentFrame);
 		m_cmdBuffer.setScissorRect(SwapChain::getScissorRect(), m_currentFrame);
 		VkDeviceSize offsets[] = { 0 };
@@ -300,8 +321,10 @@ private:
 		// TODO create descriptor set to contain different uniform object for matrices 
 		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["geometry"].GetPipeline(), m_currentFrame);
 		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["lighting"].GetPipelineLayout(),
-		         &descriptorSets[2], 1);
+			&descriptorSets[2], 1);
 		m_cmdBuffer.drawIndexed(m_currentFrame, m_lightingModel.m_mesh->m_indices.size());
+
+		// imgui render
 		ImGuiManager::StartFrame();
 		ImGuiManager::Draw(m_cmdBuffer.getCmdBuffer(m_currentFrame));
 		m_cmdBuffer.endRenderPass(m_currentFrame);
@@ -331,6 +354,7 @@ private:
 private:
 	Window m_window;
 	graphics::GraphicsModule* m_graphicsModule;
+	DescriptorSetLayoutCreateInfo layoutInfo[numberOfLayouts] = { {0,0}, {0,0} };
 
 	std::unordered_map<std::string, GraphicsPipeline> m_pipelines;
 	CommandBuffer m_cmdBuffer;
@@ -343,5 +367,6 @@ private:
 	Model m_model;
 	Model m_lightingModel;
 	Camera m_camera;
+	bool m_shaderReload = false;
 };
 

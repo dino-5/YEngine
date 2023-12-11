@@ -47,6 +47,8 @@ void Camera::parseKeyInput(GLFWwindow* window, int key, int scancode, int action
 
 void Camera::updateViewMatrix()
 {
+	float a = std::cos(m_x);
+	float b = std::sin(m_y);
 	m_direction.x = std::cos(m_x) * -std::cos(m_y);
 	m_direction.y = std::sin(m_x) * std::cos(m_y);
 	m_direction.z =  -std::sin(m_y);

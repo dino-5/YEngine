@@ -8,7 +8,6 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, V
 class Buffer
 {
 public:
-	DesctructorVulkanObject(Buffer)
 
 	void init(uint32_t sizeOfBuffer, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memoryProperties);
 	void initAsVertexBuffer(uint32_t sizeOfBuffer, void* data);
@@ -35,7 +34,6 @@ public:
 		
 	void release()
 	{
-		VulkanObjectReleased();
 		vkDestroyBuffer(*m_device, m_buffer, nullptr);
 		vkFreeMemory(*m_device, m_buffMemory, nullptr);
 	}

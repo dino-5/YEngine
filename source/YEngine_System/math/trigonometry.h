@@ -17,6 +17,18 @@ namespace math
 	public:
 		Radians(degrees aDegrees) : m_radians(convertToRadians(aDegrees))
 		{}
+		static Radians CreateFromDegrees(degrees aDegrees)
+		{
+			return Radians(aDegrees);
+		}
+
+		static Radians CreateFromRadians(radians aRadians)
+		{
+			Radians ret;
+			ret.m_radians = aRadians;
+			return ret;
+
+		}
 		Radians operator+(const Radians& obj)
 		{
 			Radians ret;

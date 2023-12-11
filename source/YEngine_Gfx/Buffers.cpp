@@ -67,7 +67,6 @@ uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties, V
 
 void Buffer::init( uint32_t sizeOfBuffer, VkBufferUsageFlags bufferUsage, VkMemoryPropertyFlags memoryProperties)
 {
-	VulkanObjectInitialized();
 	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
 	VkPhysicalDevice physicalDevice = GraphicsModule::GetInstance()->getDevice().getPhysicalDevice().getDevice();
 	m_bufferSize = sizeOfBuffer;

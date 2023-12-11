@@ -1,9 +1,11 @@
 #include <fstream>
 #include <iostream>
 
+#include "YEngine_System/Geometry.h"
+#include "YEngine_System/system/Logger.h"
+
 #include "GraphicsPipeline.h"
 #include "math.h"
-#include "YEngine_System/Geometry.h"
 #include "SwapChain.h"
 #include "GraphicsModule.h"
 
@@ -55,18 +57,39 @@ VkPipelineShaderStageCreateInfo CreateShaderStageInfo(VkShaderModule shaderModul
 	return ShaderStageInfo;
 }
 
+void Shader::init(std::string path, ShaderType type)
+{
+	m_name = path;
+	m_type = type;
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	m_shader = CreateShader(path, device);
+}
+
+VkPipelineShaderStageCreateInfo Shader::getShaderStageInfo()
+{
+	return CreateShaderStageInfo(m_shader, m_type);
+}
+
+void Shader::release()
+{
+	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	vkDestroyShaderModule(device, m_shader, nullptr);
+}
+
 void GraphicsPipeline::init(GraphicsPipelineCreateInfo createInfo)
 {
+	m_createInfo = createInfo;
 	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
-	m_vertexShader = CreateShader(createInfo.vertexShader, *m_device);
-	m_fragmentShader = CreateShader(createInfo.fragmentShader, *m_device);
-	m_descriptorSetLayouts.resize(createInfo.layoutCount);
-	for(uint32_t i=0; i<createInfo.layoutCount; ++i)
-		m_descriptorSetLayouts[i].init(createInfo.layoutCreateInfo[i]);
+	m_vertexShader.init(createInfo.vertexShader, ShaderType::VERTEX);
+	m_fragmentShader.init(createInfo.fragmentShader, ShaderType::FRAGMENT);
+	if (!m_descriptorSetLayouts.size())
+	{
+		m_descriptorSetLayouts.resize(createInfo.layoutCount);
+		for (uint32_t i = 0; i < createInfo.layoutCount; ++i)
+			m_descriptorSetLayouts[i].init(createInfo.layoutCreateInfo[i]);
+	}
 	
-	auto vertShaderStageInfo = CreateShaderStageInfo(m_vertexShader, ShaderType::VERTEX);
-	auto fragShaderStageInfo = CreateShaderStageInfo(m_fragmentShader, ShaderType::FRAGMENT);
-	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+	VkPipelineShaderStageCreateInfo shaderStages[] = { m_vertexShader.getShaderStageInfo(), m_fragmentShader.getShaderStageInfo() };
 
 	std::vector<VkDynamicState> dynamicStates = {
 		VK_DYNAMIC_STATE_VIEWPORT,
