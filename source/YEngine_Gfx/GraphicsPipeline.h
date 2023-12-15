@@ -7,13 +7,13 @@
 #include "YEngine_System/system/Logger.h"
 
 std::vector<char> ReadFile(const std::string& filename);
-VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device);
 
 enum class ShaderType
 {
 	VERTEX,
 	FRAGMENT
 };
+VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device, ShaderType type);
 
 class SwapChain;
 
@@ -38,9 +38,11 @@ private:
 	ShaderType m_type;
 };
 
+
 class GraphicsPipeline
 {
 public:
+
 	void init(GraphicsPipelineCreateInfo createInfo);
 	void release(bool fl = true)
 	{

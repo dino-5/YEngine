@@ -130,8 +130,8 @@ private:
 			m_descriptorSets["geometry"] = DescriptorSet();
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
-				.vertexShader = "shaders/bin/vert.spv" ,
-				.fragmentShader = "shaders/bin/frag.spv",
+				.vertexShader = "shaders/shader.vert",
+				.fragmentShader = "shaders/shader.frag", 
 				.layoutCreateInfo = layoutInfo,
 				.layoutCount = numberOfLayouts
 			};
@@ -152,8 +152,8 @@ private:
 			m_pipelines["geometry"] = GraphicsPipeline();
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
-				.vertexShader = "shaders/bin/vert.spv" ,
-				.fragmentShader = "shaders/bin/simpleFrag.spv",
+				.vertexShader = "shaders/shader.vert",
+				.fragmentShader = "shaders/simpleShader.frag",
 				.layoutCreateInfo = layoutInfo,
 				.layoutCount = 1
 			};
@@ -269,6 +269,7 @@ private:
 			Logger::Update();
 			if (m_shaderReload)
 			{
+				//system("shaders\\compile.bat");
 				for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 					m_graphicsModule->waitForFences(i);
 				reloadPipelines();

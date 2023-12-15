@@ -56,11 +56,17 @@ class ThirdPartyProject: BaseSimpleLibraryProject
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glfw/include");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/glm");
         conf.IncludePaths.Add(@"[project.SourceRootPath]/tiny_obj_loader");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/fmt/include");
         conf.LibraryFiles.Add("glfw3_mt"); // glfw3_mt for multi thread debuging
         conf.LibraryPaths.Add(@"[project.SourceRootPath]/glfw");
         conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
         conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
+        conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/shaderc");
         conf.LibraryFiles.Add("vulkan-1.lib");
+        //conf.LibraryFiles.Add("shaderc.lib");
+        //conf.LibraryFiles.Add("shaderc_combined.lib");
+        conf.LibraryFiles.Add("shaderc_shared.lib");
+        //conf.LibraryFiles.Add("shaderc_util.lib");
 
         if (target.OutputType == OutputType.Dll)
         {
@@ -174,6 +180,7 @@ class YEngineSystemProject : BaseSimpleLibraryProject
         }
         conf.LibraryPaths.Add("C:/VulkanSDK/1.3.250.1/Lib");
         conf.IncludePaths.Add("C:/VulkanSDK/1.3.250.1/Include");
+        conf.IncludePaths.Add(@"[project.SourceRootPath]/fmt/include");
         conf.LibraryFiles.Add("vulkan-1.lib");
         conf.Options.Add(Options.Vc.Compiler.CppLanguageStandard.CPP20);
         conf.AddPublicDependency<ThirdPartyProject>(target);

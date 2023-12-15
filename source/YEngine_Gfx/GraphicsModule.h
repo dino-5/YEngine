@@ -38,7 +38,6 @@ namespace graphics
 	private:
 		static inline std::shared_ptr<GraphicsModule> s_module = nullptr;
 
-
 	public:
 		geterGraphicsComponent(Device, m_device)
 		geterGraphicsComponent(CommandPool, m_cmdPool)

@@ -1,8 +1,10 @@
 #include <fstream>
 #include <iostream>
+#include <shaderc/shaderc.h>
 
 #include "YEngine_System/Geometry.h"
 #include "YEngine_System/system/Logger.h"
+#include "YEngine_System/system/Filesystem.h"
 
 #include "GraphicsPipeline.h"
 #include "math.h"
@@ -29,19 +31,31 @@ uint32_t GetNumberDividedBy4(uint32_t number)
 	return number + (sizeof(uint32_t) - number % 4) * (number % 4 > 0);
 }
 
-VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device)
+
+VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device, ShaderType type)
 {
+    shaderc_compiler_t compiler = shaderc_compiler_initialize();
+	std::string sourceCode = File(shaderFileName).readFile();
+
+    shaderc_compilation_result_t result = shaderc_compile_into_spv(
+		compiler, sourceCode.c_str(), sourceCode.length(),
+	    type == ShaderType::VERTEX ? shaderc_glsl_vertex_shader : shaderc_glsl_fragment_shader,
+		shaderFileName.c_str(), "main", nullptr
+	);
+
 	VkShaderModule m_shader;
-	std::vector<char> shaderByteCode = ReadFile(shaderFileName);
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = GetNumberDividedBy4(shaderByteCode.size());
-	createInfo.pCode = reinterpret_cast<uint32_t*>(shaderByteCode.data());
+	createInfo.codeSize = shaderc_result_get_length(result);
+	createInfo.pCode = reinterpret_cast<const uint32_t*>(shaderc_result_get_bytes(result));
 	createInfo.flags = 0;
 	createInfo.pNext = nullptr;
 
 	if (vkCreateShaderModule(device, &createInfo, nullptr, &m_shader) != VK_SUCCESS)
 		std::runtime_error("failed to create shader");
+
+    shaderc_result_release(result);
+    shaderc_compiler_release(compiler);
 	return m_shader;
 }
 
@@ -62,7 +76,7 @@ void Shader::init(std::string path, ShaderType type)
 	m_name = path;
 	m_type = type;
 	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
-	m_shader = CreateShader(path, device);
+	m_shader = CreateShader(path, device, type);
 }
 
 VkPipelineShaderStageCreateInfo Shader::getShaderStageInfo()
