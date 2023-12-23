@@ -41,8 +41,14 @@ public:
 
 	void release();
 	void createImageView(TextureCreateInfo textureInfo);
+	~Texture()
+	{
+		if (!m_isReleased)
+			throw std::runtime_error("Texture is not destroyed");
+	}
 
 private:
+	bool m_isReleased = true;
 	VkImageLayout m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	VkImage m_image;
 	VkImageView m_view;

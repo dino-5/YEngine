@@ -59,11 +59,24 @@ VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device,
 	return m_shader;
 }
 
+VkShaderStageFlagBits castToNativeEnum(ShaderType type)
+{
+	switch (type)
+	{
+	case ShaderType::VERTEX:
+		return VK_SHADER_STAGE_VERTEX_BIT;
+	case ShaderType::FRAGMENT:
+		return VK_SHADER_STAGE_FRAGMENT_BIT;
+	default:
+		return VK_SHADER_STAGE_VERTEX_BIT;
+	}
+}
+
 VkPipelineShaderStageCreateInfo CreateShaderStageInfo(VkShaderModule shaderModule, ShaderType type)
 {
 	VkPipelineShaderStageCreateInfo ShaderStageInfo{};
 	ShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	ShaderStageInfo.stage = type == ShaderType::VERTEX ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+	ShaderStageInfo.stage = castToNativeEnum(type);
 	ShaderStageInfo.module = shaderModule;
 	ShaderStageInfo.pName = "main";
 	ShaderStageInfo.flags = 0;

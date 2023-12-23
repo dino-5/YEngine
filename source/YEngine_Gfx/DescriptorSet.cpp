@@ -77,12 +77,12 @@ VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t 
 	return descriptorWrite;
 }
 
-VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, VkDescriptorImageInfo imageInfo, VkDescriptorType type)
+VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorImageInfo imageInfo, VkDescriptorType type)
 {
 	VkWriteDescriptorSet descriptorWrite{};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrite.dstSet = m_descriptorSet[index];
-	descriptorWrite.dstBinding = 1;
+	descriptorWrite.dstBinding = binding;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = type;
 	descriptorWrite.descriptorCount = 1;

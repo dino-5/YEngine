@@ -45,5 +45,8 @@ namespace Geometry
 	using IndexType = uint32_t;
 	const std::vector<Vertex> GetDefaultVertices();
 	const std::vector<IndexType> GetDefaultIndices();
+
+	const std::vector<Vertex> GetPlaneVertices();
+	const std::vector<IndexType> GetPlaneIndices();
 };
 

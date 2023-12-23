@@ -31,6 +31,7 @@ void GraphicsModule::release()
 	m_surface.release();
 	m_device.release();
 	VulkanInstance::DestroyVulkan();
+	s_module.reset();
 }
 
 GraphicsModule::GraphicsModule(GraphicsModuleCreateInfo createInfo)

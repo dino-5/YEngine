@@ -32,9 +32,8 @@ int main() {
 	}
 	if(test)
 	{
-		File file("shaders/shader.frag");
-		io::print(file.readFile());
-		Logger::Update();
+		io::print("{}\n", sizeof(InternalLight::Data));
+		io::print("{}\n", sizeof(InternalLight));
 	}
 
 	return 0;

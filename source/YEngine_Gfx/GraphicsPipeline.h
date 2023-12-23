@@ -13,6 +13,8 @@ enum class ShaderType
 	VERTEX,
 	FRAGMENT
 };
+VkShaderStageFlagBits castToNativeEnum(ShaderType type);
+
 VkShaderModule CreateShader(const std::string& shaderFileName, VkDevice& device, ShaderType type);
 
 class SwapChain;

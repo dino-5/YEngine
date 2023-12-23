@@ -1,10 +1,4 @@
 #pragma once
-#define GLFW_INCLUDE_VULKAN
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <stdexcept>
@@ -40,53 +34,49 @@ void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void reloadShaderCallback();
+VkDescriptorSetLayoutBinding getSamplerLayoutBinding();
 
 constexpr uint32_t numberOfLayouts = 2;
 
-struct UniformLightingStruct
+struct InternalView
 {
-	glm::vec3 position{};
-
-	void imGuiInit()
+	struct Data
 	{
-		ImGuiEntry entry;
-		entry.name = "lighting position";
-		entry.address = &position[0];
-		entry.min = -10.f;
-		entry.max =  10.f;
-		entry.type = ImGuiType::FLOAT3;
-		ImGuiManager::AddImGuiEntry(entry);
-	}
-
-	VkDescriptorSetLayoutBinding GetDescriptorSetBinding()
+		glm::mat4 view;
+		glm::mat4 proj;
+	};
+	Data data;
+	void init()
 	{
-		VkDescriptorSetLayoutBinding uboLayoutBinding{};
-		uboLayoutBinding.binding = 0;
-		uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		uboLayoutBinding.descriptorCount = 1;
-		uboLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-		uboLayoutBinding.pImmutableSamplers = nullptr;
-		return uboLayoutBinding;
+		data.proj = glm::perspective(glm::radians(45.0f), 
+			graphics::GraphicsModule::GetInstance()->getSwapChain().getAspectRatio(), 0.1f, 100.0f);
+		data.proj[1][1] *= -1;
 	}
+	std::function<void()> update;
 };
 
-struct FrameResources
+struct InternalLight 
 {
+	struct Data
+	{
+		glm::vec3 position{};
+	};
+	std::function<void()> update;
+	Data data;
+	void init() {}
 };
 
-struct PassInfo
-{
-	std::string name;
-	std::string vertexShader;
-	std::string fragmentShader;
-
-};
 
 class HelloTriangleApplication
 {
 public:
 	static inline HelloTriangleApplication* m_instance = nullptr;
-	HelloTriangleApplication()
+	HelloTriangleApplication():
+		m_passBuffer(0, ShaderType::VERTEX),
+		m_model(1, ShaderType::VERTEX),
+		m_lightingModel(1, ShaderType::VERTEX),
+		m_plane(1, ShaderType::VERTEX),
+		m_lightBuffer(3, ShaderType::FRAGMENT)
 	{
 		if (m_instance == nullptr)
 			m_instance = this;
@@ -124,46 +114,60 @@ private:
 	}
 	void createPipelines()
 	{
+		constexpr uint32_t numberOfBindings = 4;
+		VkDescriptorSetLayoutBinding descBindings[numberOfBindings] = {
+			m_passBuffer.GetDescriptorSetBinding(), m_model.m_buffer.GetDescriptorSetBinding(),
+			getSamplerLayoutBinding(), 	m_lightBuffer.GetDescriptorSetBinding()
+		};
 		{
 			m_pipelines["lighting"] = GraphicsPipeline();
-			m_descriptorSets["lighting"] = DescriptorSet();
-			m_descriptorSets["geometry"] = DescriptorSet();
+			m_descriptorSets["lightingPass"] = DescriptorSet();
+			m_descriptorSets["lightGeometry"] = DescriptorSet();
+			DescriptorSetLayoutCreateInfo dscSetLayoutCreateInfo = { descBindings, numberOfBindings };
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
 				.vertexShader = "shaders/shader.vert",
-				.fragmentShader = "shaders/shader.frag", 
-				.layoutCreateInfo = layoutInfo,
-				.layoutCount = numberOfLayouts
+				.fragmentShader = "shaders/shader.frag",
+				.layoutCreateInfo = &dscSetLayoutCreateInfo,
+				.layoutCount = 1 
 			};
 			m_pipelines["lighting"].init(pipelineCreateInfo);
 
-			m_descriptorSets["geometry1"].init(
+			m_descriptorSets["lightingPass"].init(
 				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(0)
-			);
-			m_descriptorSets["geometry2"].init(
-				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(0)
-			);
-			m_descriptorSets["lighting"].init(
-				MAX_FRAMES_IN_FLIGHT, m_pipelines["lighting"].getDescriptorSetLayout(1)
 			);
 		}
 
 		{
 			m_pipelines["geometry"] = GraphicsPipeline();
+			DescriptorSetLayoutCreateInfo dscSetLayoutCreateInfo = { descBindings, 3};
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
 				.vertexShader = "shaders/shader.vert",
 				.fragmentShader = "shaders/simpleShader.frag",
-				.layoutCreateInfo = layoutInfo,
+				.layoutCreateInfo = &dscSetLayoutCreateInfo,
 				.layoutCount = 1
 			};
 			m_pipelines["geometry"].init(pipelineCreateInfo);
+			m_descriptorSets["lightGeometry"].init(
+				MAX_FRAMES_IN_FLIGHT, m_pipelines["geometry"].getDescriptorSetLayout(0)
+			);
 		}
+
+		m_passBuffer.m_data.update = [&]()
+		{
+			m_passBuffer.m_data.data.view = m_camera.getView();
+		};
+
+		m_lightBuffer.m_data.update = [&]()
+		{
+			m_lightBuffer.m_data.data.position = m_lightingModel.m_position;
+		};
 	}
 	void reloadPipelines()
 	{
-		m_pipelines["lighting"].reload();
-		m_pipelines["geometry"].reload();
+		for (auto& pipeline : m_pipelines)
+			pipeline.second.reload();
 	}
 	void initVulkan()
 	{
@@ -181,12 +185,6 @@ private:
 		m_graphicsModule = graphics::GraphicsModule::CreateGraphicsModule(createInfo);
 		ImGuiManager::Initialize();
 
-		VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-		samplerLayoutBinding.binding = 1;
-		samplerLayoutBinding.descriptorCount = 1;
-		samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		samplerLayoutBinding.pImmutableSamplers = nullptr;
-		samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
 		TextureCreateInfo textureInfo{
 			.format = VK_FORMAT_R8G8B8A8_SRGB,
@@ -195,70 +193,60 @@ private:
 		};
 
 		// TODO format added for image
-		m_model.init("assets/diffuse.jpg", textureInfo, "assets/backpack.obj", "model", "backpack");
-		m_lightingModel.init("assets/diffuse.jpg", textureInfo, "assets/backpack.obj", "lightingModel", "backpack");
-		m_lighting.imGuiInit();
+		Mesh::CreateMesh("backpack", "assets/backpack.obj");
+		Mesh::CreateMesh("plane", Geometry::GetPlaneVertices(), Geometry::GetPlaneIndices());
+		m_model.init("assets/diffuse.jpg", textureInfo,  "model", "backpack");
+		m_lightingModel.init("assets/diffuse.jpg", textureInfo, "lightingModel", "backpack");
+		m_plane.init("assets/wall.jpg", textureInfo, "plane", "plane");
+		m_passBuffer.init();
+		m_lightBuffer.init();
 
-		constexpr uint32_t numberOfBindings = 3;
-		VkDescriptorSetLayoutBinding descBindings[numberOfBindings] = {
-			m_model.m_uniformObject.GetDescriptorSetBinding(), samplerLayoutBinding,
-			m_lighting.GetDescriptorSetBinding()
-		};
-
-		layoutInfo[0] = { descBindings, 2 };
-		layoutInfo[1] = { &descBindings[2], 1 };
 		createPipelines();
 		ImGuiManager::AddButton({ "shader Reload", &m_shaderReload});
 
 		m_cmdBuffer.init(static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
 
-
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
-			m_uniformBuffer[i].init(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			m_uniformBuffer[i].mapMemory(0);
-
-			m_lightingModelBuffer[i].init(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			m_lightingModelBuffer[i].mapMemory(0);
-
-			m_lightingBuffer[i].init(sizeof(UniformLightingStruct), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-				VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-			m_lightingBuffer[i].mapMemory(0);
 			{
-				constexpr uint32_t numberOfDescriptorSets = 3;
-				VkWriteDescriptorSet descriptorSets[numberOfDescriptorSets];
-				descriptorSets[0] = m_descriptorSets["geometry1"].getWriteDescriptor(
-					i, 0, m_uniformBuffer[i].getDescriptorBufferInfo(),
+				constexpr uint32_t numberOfDescriptors= 4;
+				VkWriteDescriptorSet descriptors[numberOfDescriptors];
+				auto& descriptorSet = m_descriptorSets["lightingPass"];
+
+				descriptors[0] = descriptorSet.getWriteDescriptor(
+					i, 0, m_passBuffer.m_buffers[i].getDescriptorBufferInfo(),
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-				descriptorSets[1] = m_descriptorSets["geometry1"].getWriteDescriptor(
-					i, m_model.m_texture[i].getDescriptorImageInfo(),
+				descriptors[1] = descriptorSet.getWriteDescriptor(
+					i, 1, m_model.getDescriptorBufferInfo(i),
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+				descriptors[2] = descriptorSet.getWriteDescriptor(
+					i, 2, m_model.m_texture[i].getDescriptorImageInfo(),
 					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-				descriptorSets[2] = m_descriptorSets["lighting"].getWriteDescriptor(
-					i, 0, m_lightingBuffer[i].getDescriptorBufferInfo(),
+				descriptors[3] = descriptorSet.getWriteDescriptor(
+					i, 3, m_lightBuffer.m_buffers[i].getDescriptorBufferInfo(),
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-				m_descriptorSets["geometry1"].updateDescriptors(
-					descriptorSets, 2);
-
-				m_descriptorSets["lighting"].updateDescriptors(
-					&descriptorSets[2], 1);
+				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
 			}
 
 			{
-				VkWriteDescriptorSet descriptorSets[2];
-				descriptorSets[0] = m_descriptorSets["geometry2"].getWriteDescriptor(
-					i, 0, m_lightingModelBuffer[i].getDescriptorBufferInfo(),
+				constexpr const uint32_t numberOfDescriptors = 3;
+				VkWriteDescriptorSet descriptors[numberOfDescriptors];
+				auto& descriptorSet = m_descriptorSets["lightGeometry"];
+
+				descriptors[0] = descriptorSet.getWriteDescriptor(
+					i, 0, m_passBuffer.m_buffers[i].getDescriptorBufferInfo(),
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-				descriptorSets[1] = m_descriptorSets["geometry2"].getWriteDescriptor(
-					i, m_lightingModel.m_texture[i].getDescriptorImageInfo(),
+				descriptors[1] = descriptorSet.getWriteDescriptor(
+					i, 1, m_lightingModel.getDescriptorBufferInfo(i),
+					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+				descriptors[2] = descriptorSet.getWriteDescriptor(
+					i, 2, m_lightingModel.m_texture[i].getDescriptorImageInfo(),
 					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-				m_descriptorSets["geometry2"].updateDescriptors(
-					descriptorSets, 2);
+
+				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
 			}
 		}
-		Logger::PrintError("{} is greater then {}\n", 3, 4);
 	}
 
 	void mainLoop()
@@ -269,7 +257,6 @@ private:
 			Logger::Update();
 			if (m_shaderReload)
 			{
-				//system("shaders\\compile.bat");
 				for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 					m_graphicsModule->waitForFences(i);
 				reloadPipelines();
@@ -282,14 +269,10 @@ private:
 
 	void updateUniformBuffer()
 	{
-		m_model.update();
-		m_lightingModel.update();
-
-		m_model.m_uniformObject.view = m_camera.getView();
-		m_lightingModel.m_uniformObject.view = m_camera.getView();
-		m_uniformBuffer[m_currentFrame].copyMemory(&m_model.m_uniformObject);
-		m_lightingBuffer[m_currentFrame].copyMemory(&m_lightingModel.m_position);
-		m_lightingModelBuffer[m_currentFrame].copyMemory(&m_lightingModel.m_uniformObject);
+		m_model.update(m_currentFrame);
+		m_lightingModel.update(m_currentFrame);
+		m_passBuffer.update(m_currentFrame);
+		m_lightBuffer.update(m_currentFrame);
 	}
 
 	void drawFrame()
@@ -306,12 +289,11 @@ private:
 		m_cmdBuffer.beginRenderPass(m_graphicsModule->getSwapChain().getRenderPassBeginInfo(imageIndex), m_currentFrame);
 		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["lighting"].GetPipeline(), m_currentFrame);
 		VkDescriptorSet descriptorSets[] = {
-			m_descriptorSets["geometry1"].getDescriptorSet(m_currentFrame),
-			m_descriptorSets["lighting"].getDescriptorSet(m_currentFrame),
-			m_descriptorSets["geometry2"].getDescriptorSet(m_currentFrame),
+			m_descriptorSets["lightingPass"].getDescriptorSet(m_currentFrame),
+			m_descriptorSets["lightGeometry"].getDescriptorSet(m_currentFrame),
 		};
 		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["lighting"].GetPipelineLayout(),
-			descriptorSets, 2);
+			descriptorSets, 1);
 		m_cmdBuffer.setViewport(SwapChain::getViewport(), m_currentFrame);
 		m_cmdBuffer.setScissorRect(SwapChain::getScissorRect(), m_currentFrame);
 		VkDeviceSize offsets[] = { 0 };
@@ -321,8 +303,8 @@ private:
 
 		// TODO create descriptor set to contain different uniform object for matrices 
 		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["geometry"].GetPipeline(), m_currentFrame);
-		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["lighting"].GetPipelineLayout(),
-			&descriptorSets[2], 1);
+		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["geometry"].GetPipelineLayout(),
+			&descriptorSets[1], 1);
 		m_cmdBuffer.drawIndexed(m_currentFrame, m_lightingModel.m_mesh->m_indices.size());
 
 		// imgui render
@@ -339,15 +321,13 @@ private:
 	void cleanup() {
 		m_model.release();
 		m_lightingModel.release();
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-		{
-			m_uniformBuffer[i].release();
-			m_lightingBuffer[i].release();
-			m_lightingModelBuffer[i].release();
-		}
+		m_plane.release();
+		m_lightBuffer.release();
+		m_passBuffer.release();
 		for (auto& pipeline : m_pipelines)
 			pipeline.second.release();
 		ImGuiManager::Release();
+		Mesh::Cleanup();
 		m_graphicsModule->release();
 		m_window.release();
 	}
@@ -355,19 +335,17 @@ private:
 private:
 	Window m_window;
 	graphics::GraphicsModule* m_graphicsModule;
-	DescriptorSetLayoutCreateInfo layoutInfo[numberOfLayouts] = { {0,0}, {0,0} };
 
 	std::unordered_map<std::string, GraphicsPipeline> m_pipelines;
-	CommandBuffer m_cmdBuffer;
-	std::array<Buffer, MAX_FRAMES_IN_FLIGHT> m_uniformBuffer;
-	std::array<Buffer, MAX_FRAMES_IN_FLIGHT> m_lightingBuffer;
-	std::array<Buffer, MAX_FRAMES_IN_FLIGHT> m_lightingModelBuffer;
-	UniformLightingStruct m_lighting;
 	std::unordered_map< std::string, DescriptorSet> m_descriptorSets;
-	uint32_t m_currentFrame = 0;
+	CommandBuffer m_cmdBuffer;
+	UniformBuffer<InternalLight> m_lightBuffer;
+	UniformBuffer<InternalView> m_passBuffer;
 	Model m_model;
 	Model m_lightingModel;
+	Model m_plane;
 	Camera m_camera;
+	uint32_t m_currentFrame = 0;
 	bool m_shaderReload = false;
 };
 

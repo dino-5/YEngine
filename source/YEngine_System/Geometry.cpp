@@ -58,4 +58,24 @@ const std::vector<IndexType> GetDefaultIndices()
 	return indices;
 }
 
+const std::vector<Vertex> GetPlaneVertices()
+{
+	const std::vector<Vertex> vertices = {
+		//bottom 
+		{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}}, //0
+		{{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}}, //1 
+		{{ 0.5f,  0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}}, //2
+		{{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}, //3
+	};
+	return vertices;
+}
+
+const std::vector<IndexType> GetPlaneIndices()
+{
+	const std::vector<IndexType> indices = {
+		0, 1, 2, 2, 3, 0,
+	};
+	return indices;
+}
+
 }

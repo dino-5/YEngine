@@ -3,6 +3,12 @@
 #include "ImGui.h"
 
 using namespace graphics;
+std::shared_ptr<Mesh> Mesh::GetMesh(std::string a_name)
+{
+	if (s_meshes.find(a_name) == s_meshes.end())
+		return nullptr;
+	return s_meshes[a_name];
+}
 
 std::shared_ptr<Mesh> Mesh::CreateMesh(std::string a_name, const std::string& pathToModel)
 {
@@ -46,15 +52,46 @@ std::shared_ptr<Mesh> Mesh::CreateMesh(std::string a_name, const std::string& pa
 	}
 	return s_meshes[a_name];
 }
+std::shared_ptr<Mesh> Mesh::CreateMesh(std::string a_name, const std::vector<Geometry::Vertex> vertices,
+	const std::vector<Geometry::IndexType> indices)
+{
+	if (s_meshes.find(a_name) == s_meshes.end())
+	{
+		s_meshes[a_name] = std::make_shared<Mesh>(a_name, vertices, indices);
+		s_meshes[a_name]->initBuffers();
+	}
+	return s_meshes[a_name];
+}
 
-void Model::init(const std::string& pathToPixels, TextureCreateInfo info, const std::string& pathToModel,
+void Mesh::release()
+{
+	m_indexBuffer.release();
+	m_vertexBuffer.release();
+}
+
+void Mesh::Cleanup()
+{
+	for (auto& obj : s_meshes)
+		obj.second->release();
+}
+
+void Mesh::DeleteMesh(std::string name)
+{
+	auto it = s_meshes.find(name);
+	if (it != s_meshes.end())
+	{
+		s_meshes.erase(it);
+	}
+}
+
+void Model::init(const std::string& pathToPixels, TextureCreateInfo info,
 	std::string name, std::string meshName)
 {
 	m_name = name;
-	for(uint32_t i=0; i<3;i++)
-		m_texture[i].init(pathToPixels, info);
+	for(auto& texture: m_texture)
+		texture.init(pathToPixels, info);
 
-	m_mesh = Mesh::CreateMesh(meshName, pathToModel);
+	m_mesh = Mesh::GetMesh(meshName);
 
 	ImGuiEntry entry;
 	entry.address = &m_position[0];
@@ -63,14 +100,15 @@ void Model::init(const std::string& pathToPixels, TextureCreateInfo info, const 
 	entry.min = -10;
 	entry.max =  10;
 	ImGuiManager::AddImGuiEntry(entry);
+
+	m_buffer.init();
+	m_buffer.m_data.update = [&]() {
+		glm::mat4 mat = glm::mat4(1.0f);
+		m_buffer.m_data.data.model = glm::translate(mat, m_position);
+	};
 }
 
-void Model::update()
+void Model::update(uint32_t frame)
 {
-	m_uniformObject.model = glm::mat4(1.0f);
-	m_uniformObject.model = glm::translate(m_uniformObject.model, m_position);
-	m_uniformObject.view = glm::lookAt(glm::vec3(0.0f, 1.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	m_uniformObject.proj = glm::perspective(glm::radians(45.0f), 
-		graphics::GraphicsModule::GetInstance()->getSwapChain().getAspectRatio(), 0.1f, 100.0f);
-	m_uniformObject.proj[1][1] *= -1;
+	m_buffer.update(frame);
 }

@@ -53,10 +53,12 @@ void Texture::release()
 	vkDestroyImage(device, m_image, nullptr);
 	vkFreeMemory(device, m_imageMemory, nullptr);
 	m_currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	m_isReleased = true;
 }
 
 void Texture::initAsTexture(const std::string& path, TextureCreateInfo textureInfo)
 {
+	m_isReleased = false;
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = static_cast<uint64_t>(texWidth) * texHeight * 4;
@@ -78,6 +80,7 @@ void Texture::initAsTexture(const std::string& path, TextureCreateInfo textureIn
 	VkQueue graphicsQueue = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getGraphicsQueue();
 	cmdBuffer.endSingleTimeCommands(0, graphicsQueue);
 	createImageView(textureInfo);
+	stagingBuffer.release();
 }
 
 void Texture::createImageView(TextureCreateInfo textureInfo)
@@ -100,6 +103,7 @@ void Texture::createImageView(TextureCreateInfo textureInfo)
 
 void Texture::initAsDepthBuffer(uint32_t width, uint32_t height, TextureCreateInfo textureInfo)
 {
+	m_isReleased = false;
 	createImage(width, height, m_image, m_imageMemory, textureInfo);
 
 	CommandBuffer cmdBuffer;

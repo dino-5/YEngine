@@ -14,6 +14,7 @@ struct DescriptorSetLayoutCreateInfo
 		bindings(t_bindings),
 		count(t_count)
 	{}
+	DescriptorSetLayoutCreateInfo() = default;
 };
 
 class DescriptorSetLayout
@@ -49,7 +50,7 @@ public:
 	void init(uint32_t descriptorSetCount, DescriptorSetLayout layout);
 	void updateDescriptors(VkWriteDescriptorSet* writes, uint32_t count);
 
-	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, VkDescriptorImageInfo imageInfo, VkDescriptorType type);
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorImageInfo imageInfo, VkDescriptorType type);
 	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type);
 	VkDescriptorSet& getDescriptorSet(uint32_t index) { return m_descriptorSet[index]; }
 private:

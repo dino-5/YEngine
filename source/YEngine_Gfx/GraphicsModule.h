@@ -8,9 +8,8 @@
 #include "SwapChain.h"
 #include "gfx_common.h"
 
-#include "imgui/imgui.h"
-
 #include <memory>
+
 namespace graphics
 {
 

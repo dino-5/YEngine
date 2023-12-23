@@ -5,6 +5,7 @@
 
 #include "RenderPass.h"
 #include "Texture.h"
+#include "gfx_common.h"
 
 struct GLFWwindow;
 struct SwapChainSupportDetails {
@@ -15,7 +16,6 @@ struct SwapChainSupportDetails {
 	bool isSuitable() { return !formats.empty() && !presentModes.empty(); }
 };
 
-const constexpr int MAX_FRAMES_IN_FLIGHT =2 ;
 
 SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
 

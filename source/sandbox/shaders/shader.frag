@@ -6,10 +6,10 @@ layout(location = 2) in vec3 normal;
 
 layout(location = 0) out vec4 outColor;
 
-layout( set=0, binding = 1) uniform sampler2D texSampler;
+layout(  binding = 2) uniform sampler2D texSampler;
 
 //
-layout( set=1, binding=0 ) uniform LightingStruct{
+layout(  binding=3 ) uniform LightingStruct{
     vec3 pos;
 }lighting;
 //
