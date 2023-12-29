@@ -213,18 +213,10 @@ private:
 				VkWriteDescriptorSet descriptors[numberOfDescriptors];
 				auto& descriptorSet = m_descriptorSets["lightingPass"];
 
-				descriptors[0] = descriptorSet.getWriteDescriptor(
-					i, 0, m_passBuffer.m_buffers[i].getDescriptorBufferInfo(),
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-				descriptors[1] = descriptorSet.getWriteDescriptor(
-					i, 1, m_model.getDescriptorBufferInfo(i),
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-				descriptors[2] = descriptorSet.getWriteDescriptor(
-					i, 2, m_model.m_texture[i].getDescriptorImageInfo(),
-					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-				descriptors[3] = descriptorSet.getWriteDescriptor(
-					i, 3, m_lightBuffer.m_buffers[i].getDescriptorBufferInfo(),
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+				descriptors[0] = descriptorSet.getWriteDescriptor(i, 0, m_passBuffer[i]);
+				descriptors[1] = descriptorSet.getWriteDescriptor(i, 1, m_model.getBuffer(i));
+				descriptors[2] = descriptorSet.getWriteDescriptor(i, 2, m_model.getImage(i));
+				descriptors[3] = descriptorSet.getWriteDescriptor(i, 3, m_lightBuffer[i]);
 
 				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
 			}
@@ -234,15 +226,9 @@ private:
 				VkWriteDescriptorSet descriptors[numberOfDescriptors];
 				auto& descriptorSet = m_descriptorSets["lightGeometry"];
 
-				descriptors[0] = descriptorSet.getWriteDescriptor(
-					i, 0, m_passBuffer.m_buffers[i].getDescriptorBufferInfo(),
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-				descriptors[1] = descriptorSet.getWriteDescriptor(
-					i, 1, m_lightingModel.getDescriptorBufferInfo(i),
-					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-				descriptors[2] = descriptorSet.getWriteDescriptor(
-					i, 2, m_lightingModel.m_texture[i].getDescriptorImageInfo(),
-					VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+				descriptors[0] = descriptorSet.getWriteDescriptor(i, 0, m_passBuffer[i]);
+				descriptors[1] = descriptorSet.getWriteDescriptor(i, 1, m_lightingModel.getBuffer(i));
+				descriptors[2] = descriptorSet.getWriteDescriptor(i, 2, m_lightingModel.getImage(i));
 
 				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
 			}

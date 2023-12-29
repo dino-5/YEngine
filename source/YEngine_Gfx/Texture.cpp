@@ -152,13 +152,12 @@ void Sampler::release()
 	vkDestroySampler(device, m_sampler, nullptr);
 }
 
-VkDescriptorImageInfo Texture::getDescriptorImageInfo(Sampler sampler)
+VkDescriptorImageInfo* Texture::getDescriptorImageInfo(Sampler sampler)
 {
-	VkDescriptorImageInfo info;
 	info.imageLayout = m_currentLayout;
 	info.imageView = m_view;
 	info.sampler = sampler.getSampler();
-	return info;
+	return &info;
 }
 
 bool hasStencilComponent(VkFormat format) {

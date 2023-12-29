@@ -69,9 +69,7 @@ public:
 	void update(uint32_t frame);
 	void release()
 	{
-		for(auto& texture: m_texture)
-			texture.Release();
-
+		m_textures.release();
 		m_buffer.release();
 
 		if (m_mesh.use_count() == 2) // inside model and static map in Mesh
@@ -82,13 +80,21 @@ public:
 		else
 			m_mesh.reset();
 	}
-	VkDescriptorBufferInfo getDescriptorBufferInfo(uint32_t index)
+	VkDescriptorBufferInfo* getDescriptorBufferInfo(uint32_t index)
 	{
-		return m_buffer.m_buffers[index].getDescriptorBufferInfo();
+		return m_buffer.getDescriptorBufferInfo(index);
 	}
 
-	std::array<TextureImage, MAX_FRAMES_IN_FLIGHT> m_texture;
+	VkDescriptorImageInfo* getDescriptorImageInfo(uint32_t index)
+	{
+		return m_textures[index].getDescriptorImageInfo();
+	}
+
+	Buffer& getBuffer(uint32_t index) { return m_buffer[index]; }
+	TextureImage& getImage(uint32_t index) { return m_textures[index]; }
+
 	std::shared_ptr<Mesh> m_mesh;
+	FrameResources<TextureImage> m_textures;
 	UniformBuffer<InternalModel> m_buffer;
 	glm::vec3 m_position{};
 	std::string m_name;

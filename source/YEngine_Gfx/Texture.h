@@ -17,7 +17,7 @@ public:
 		m_sampler = createSampler();
 	}
 	void release();
-	VkSampler& getSampler() { return m_sampler; }
+	VkSampler getSampler() { return m_sampler; }
 private:
 	VkSampler m_sampler;
 };
@@ -37,7 +37,7 @@ public:
 
 	void getBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newLayout, VkFormat format);
 	VkImageView getImageView() { return m_view; }
-	VkDescriptorImageInfo getDescriptorImageInfo(Sampler sampler);
+	VkDescriptorImageInfo* getDescriptorImageInfo(Sampler sampler);
 
 	void release();
 	void createImageView(TextureCreateInfo textureInfo);
@@ -53,6 +53,7 @@ private:
 	VkImage m_image;
 	VkImageView m_view;
 	VkDeviceMemory m_imageMemory;
+	VkDescriptorImageInfo info;
 };
 
 struct TextureImage
@@ -64,12 +65,12 @@ struct TextureImage
 		texture.initAsTexture(path, info);
 		sampler.init();
 	}
-	void Release()
+	void release()
 	{
 		texture.release();
 		sampler.release();
 	}
-	VkDescriptorImageInfo getDescriptorImageInfo() {
+	VkDescriptorImageInfo* getDescriptorImageInfo() {
 		return texture.getDescriptorImageInfo(sampler);
 	}
 };

@@ -34,12 +34,11 @@ public:
 		vkUnmapMemory(*m_device, m_buffMemory);
 	 }
 
-	VkDescriptorBufferInfo getDescriptorBufferInfo() {
-		VkDescriptorBufferInfo desc;
+	VkDescriptorBufferInfo* getDescriptorBufferInfo() {
 		desc.buffer = m_buffer;
 		desc.offset = 0;
 		desc.range = m_bufferSize;
-		return desc;
+		return &desc;
 	}
 		
 	void release()
@@ -64,7 +63,7 @@ private:
 	VkDevice* m_device;
 	VkBuffer m_buffer;
 	VkDeviceMemory m_buffMemory;
-
+	VkDescriptorBufferInfo desc;
 };
 
 template<typename Internal>
@@ -93,6 +92,11 @@ struct UniformBuffer
 
 		m_data.init();
 	}
+
+	VkDescriptorBufferInfo* getDescriptorBufferInfo(uint32_t index) {
+		return m_buffers[index].getDescriptorBufferInfo();
+	}
+
 	void update(uint32_t index)
 	{
 		m_data.update();
@@ -101,14 +105,13 @@ struct UniformBuffer
 
 	void release()
 	{
-		for (auto& buffer : m_buffers)
-			buffer.release();
+		m_buffers.release();
 	}
-	void setView(glm::mat4 mat) { m_data.view = mat; }
-	void setProj(glm::mat4 mat) { m_data.proj = mat; }
+
+	Buffer& operator[](uint32_t index) { return m_buffers[index]; }
 
 	Internal m_data;
-	std::array<Buffer, MAX_FRAMES_IN_FLIGHT> m_buffers;
+	FrameResources<Buffer> m_buffers;
 	uint32_t m_binding;
 	ShaderType m_type;
 };

@@ -5,6 +5,9 @@
 #include "YEngine_System/common.h"
 
 uint32_t GetNumberOfDescriptors(VkDescriptorPoolSize* pools, uint32_t poolsCount);
+class Model;
+class Buffer;
+class TextureImage;
 
 struct DescriptorSetLayoutCreateInfo
 {
@@ -50,8 +53,15 @@ public:
 	void init(uint32_t descriptorSetCount, DescriptorSetLayout layout);
 	void updateDescriptors(VkWriteDescriptorSet* writes, uint32_t count);
 
-	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorImageInfo imageInfo, VkDescriptorType type);
-	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type);
+	// buffers
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, Buffer& buffer);
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo* bufferInfo,
+		VkDescriptorType type);
+	// textures
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, TextureImage& texture);
+	VkWriteDescriptorSet getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorImageInfo* imageInfo,
+		VkDescriptorType type);
+	//
 	VkDescriptorSet& getDescriptorSet(uint32_t index) { return m_descriptorSet[index]; }
 private:
 	VkDevice* m_device;

@@ -1,6 +1,7 @@
 #include <vector>
 #include "DescriptorSet.h"
 #include "GraphicsModule.h"
+#include "Model.h"
 
 using namespace graphics;
 
@@ -62,7 +63,8 @@ void DescriptorSet::init(uint32_t descriptorSetCount, DescriptorSetLayout layout
 		throw std::runtime_error("failed to allocate descriptor sets");
 }
 
-VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo bufferInfo, VkDescriptorType type)
+VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorBufferInfo* bufferInfo,
+	VkDescriptorType type)
 {
 	VkWriteDescriptorSet descriptorWrite{};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -71,13 +73,24 @@ VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t 
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = type;
 	descriptorWrite.descriptorCount = 1;
-	descriptorWrite.pBufferInfo = &bufferInfo;
+	descriptorWrite.pBufferInfo = bufferInfo;
 	descriptorWrite.pImageInfo = nullptr; // Optional
 	descriptorWrite.pTexelBufferView = nullptr; // Optional
 	return descriptorWrite;
 }
 
-VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorImageInfo imageInfo, VkDescriptorType type)
+VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, Buffer& buffer)
+{
+	return getWriteDescriptor(index, binding, buffer.getDescriptorBufferInfo(), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+}
+
+VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, TextureImage& texture)
+{
+	return getWriteDescriptor(index, binding, texture.getDescriptorImageInfo(), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+}
+
+VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t binding, VkDescriptorImageInfo* imageInfo,
+	VkDescriptorType type)
 {
 	VkWriteDescriptorSet descriptorWrite{};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -86,7 +99,7 @@ VkWriteDescriptorSet DescriptorSet::getWriteDescriptor(uint32_t index, uint32_t 
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = type;
 	descriptorWrite.descriptorCount = 1;
-	descriptorWrite.pImageInfo= &imageInfo;
+	descriptorWrite.pImageInfo= imageInfo;
 	descriptorWrite.pBufferInfo= nullptr; // Optional
 	descriptorWrite.pTexelBufferView = nullptr; // Optional
 	return descriptorWrite;
