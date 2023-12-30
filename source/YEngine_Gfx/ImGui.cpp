@@ -62,15 +62,15 @@ void ImGuiManager::Initialize()
     {
         // Use any command queue
 		VkCommandPool command_pool = module->getCommandPool().getPool();
-		CommandBuffer cmdBuffer;
 
         VkResult err = vkResetCommandPool(module->getDevice().getLogicalDevice().getDevice(), command_pool, 0);
         check_vk_result(err);
 
+		CommandBuffer cmdBuffer = module->getCommandPool().createOneTimeCmdBuffer();
 		cmdBuffer.initAsSingleTimeCmdBuffer();
-        ImGui_ImplVulkan_CreateFontsTexture(cmdBuffer.getCmdBuffer(0));
+        ImGui_ImplVulkan_CreateFontsTexture(cmdBuffer.getNative());
 
-		cmdBuffer.endSingleTimeCommands(0, module->getDevice().getLogicalDevice().getGraphicsQueue());
+		cmdBuffer.endSingleTimeCommands(module->getDevice().getLogicalDevice().getGraphicsQueue());
         err = vkDeviceWaitIdle(module->getDevice().getLogicalDevice().getDevice());
         check_vk_result(err);
         ImGui_ImplVulkan_DestroyFontUploadObjects();

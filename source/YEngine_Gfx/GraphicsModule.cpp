@@ -39,9 +39,8 @@ GraphicsModule::GraphicsModule(GraphicsModuleCreateInfo createInfo)
 	VulkanInstance::InitVulkan();
 	m_surface.init();
 	m_device.init(m_surface.getSurface());
-	m_cmdPool.init(m_device, m_surface);
+	m_cmdPool.init(m_device, m_surface, createInfo.numberOfCmdBuffers);
 	m_descriptorPool.init(m_device.getLogicalDevice().getDevice(), createInfo.poolSizes, createInfo.numberOfPools);
-
 }
 
 void GraphicsModule::swapChainInit()

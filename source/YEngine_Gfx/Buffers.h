@@ -109,7 +109,7 @@ struct UniformBuffer
 	}
 
 	Buffer& operator[](uint32_t index) { return m_buffers[index]; }
-
+public:
 	Internal m_data;
 	FrameResources<Buffer> m_buffers;
 	uint32_t m_binding;

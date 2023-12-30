@@ -72,13 +72,13 @@ void Texture::initAsTexture(const std::string& path, TextureCreateInfo textureIn
 	createImage( static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight), m_image, m_imageMemory,
 		textureInfo);
 
-	CommandBuffer cmdBuffer;
+	CommandBuffer cmdBuffer = GraphicsModule::GetInstance()->getCommandPool().createOneTimeCmdBuffer();
 	cmdBuffer.initAsSingleTimeCmdBuffer();
 	getBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureInfo.format);
-	cmdBuffer.copyBufferToImage(0, stagingBuffer.getBuffer(), m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+	cmdBuffer.copyBufferToImage( stagingBuffer.getBuffer(), m_image, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
 	getBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureInfo.format);
 	VkQueue graphicsQueue = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getGraphicsQueue();
-	cmdBuffer.endSingleTimeCommands(0, graphicsQueue);
+	cmdBuffer.endSingleTimeCommands( graphicsQueue);
 	createImageView(textureInfo);
 	stagingBuffer.release();
 }
@@ -106,11 +106,12 @@ void Texture::initAsDepthBuffer(uint32_t width, uint32_t height, TextureCreateIn
 	m_isReleased = false;
 	createImage(width, height, m_image, m_imageMemory, textureInfo);
 
-	CommandBuffer cmdBuffer;
+	CommandBuffer cmdBuffer = GraphicsModule::GetInstance()->getCommandPool().createOneTimeCmdBuffer();
 	cmdBuffer.initAsSingleTimeCmdBuffer();
 	getBarrierImageLayout(cmdBuffer, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, textureInfo.format);
 
 	createImageView(textureInfo);
+	cmdBuffer.endSingleTimeCommands(GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getGraphicsQueue());
 }
 
 VkSampler createSampler()
@@ -220,7 +221,7 @@ void Texture::getBarrierImageLayout(CommandBuffer& cmdBuffer, VkImageLayout newL
 		throw std::invalid_argument("unsupported layout transition!");
 	}
 
-	cmdBuffer.pipelineBarrier(0, srcStage, dstStage, barrier);
+	cmdBuffer.pipelineBarrier(srcStage, dstStage, barrier);
 
 	m_currentLayout = newLayout;
 }

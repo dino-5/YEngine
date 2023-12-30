@@ -22,7 +22,7 @@ void copyBuffers(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 	allocInfo.commandPool = cmdPool;
 	allocInfo.commandBufferCount = 1;
 
-	//todo: make it with CommandBuffer class
+	// todo: make it with CommandBuffer class
 	VkCommandBuffer commandBuffer;
 	vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
 

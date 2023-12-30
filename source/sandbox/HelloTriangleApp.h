@@ -180,11 +180,12 @@ private:
 		graphics::GraphicsModuleCreateInfo createInfo
 		{
 			.numberOfPools = numberOfPools,
-				.poolSizes = poolSizes
+			.poolSizes = poolSizes,
+			.numberOfCmdBuffers = MAX_FRAMES_IN_FLIGHT
 		};
 		m_graphicsModule = graphics::GraphicsModule::CreateGraphicsModule(createInfo);
+		m_cmdPool = &m_graphicsModule->getCommandPool();
 		ImGuiManager::Initialize();
-
 
 		TextureCreateInfo textureInfo{
 			.format = VK_FORMAT_R8G8B8A8_SRGB,
@@ -203,8 +204,6 @@ private:
 
 		createPipelines();
 		ImGuiManager::AddButton({ "shader Reload", &m_shaderReload});
-
-		m_cmdBuffer.init(static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT));
 
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
@@ -271,34 +270,35 @@ private:
 		uint32_t imageIndex = static_cast<uint32_t>(imageIndexT);
 
 		m_graphicsModule->resetFences(m_currentFrame);
-		m_cmdBuffer.reset(m_currentFrame);
-		m_cmdBuffer.beginRenderPass(m_graphicsModule->getSwapChain().getRenderPassBeginInfo(imageIndex), m_currentFrame);
-		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["lighting"].GetPipeline(), m_currentFrame);
+		m_cmdBuffer = (*m_cmdPool)[m_currentFrame];
+		m_cmdBuffer.reset();
+		m_cmdBuffer.beginRenderPass(m_graphicsModule->getSwapChain().getRenderPassBeginInfo(imageIndex));
+		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["lighting"].GetPipeline());
 		VkDescriptorSet descriptorSets[] = {
 			m_descriptorSets["lightingPass"].getDescriptorSet(m_currentFrame),
 			m_descriptorSets["lightGeometry"].getDescriptorSet(m_currentFrame),
 		};
-		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["lighting"].GetPipelineLayout(),
+		m_cmdBuffer.bindDescriptorSet(m_pipelines["lighting"].GetPipelineLayout(),
 			descriptorSets, 1);
 		m_cmdBuffer.setViewport(SwapChain::getViewport(), m_currentFrame);
 		m_cmdBuffer.setScissorRect(SwapChain::getScissorRect(), m_currentFrame);
 		VkDeviceSize offsets[] = { 0 };
-		m_cmdBuffer.bindVertexBuffers(m_currentFrame, &m_model.m_mesh->m_vertexBuffer.getBuffer(), offsets, 1);
-		m_cmdBuffer.bindIndexBuffers(m_currentFrame, m_model.m_mesh->m_indexBuffer.getBuffer());
-		m_cmdBuffer.drawIndexed(m_currentFrame, m_model.m_mesh->m_indices.size());
+		m_cmdBuffer.bindVertexBuffers(&m_model.m_mesh->m_vertexBuffer.getBuffer(), offsets, 1);
+		m_cmdBuffer.bindIndexBuffers(m_model.m_mesh->m_indexBuffer.getBuffer());
+		m_cmdBuffer.drawIndexed(m_model.m_mesh->m_indices.size());
 
 		// TODO create descriptor set to contain different uniform object for matrices 
-		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["geometry"].GetPipeline(), m_currentFrame);
-		m_cmdBuffer.bindDescriptorSet(m_currentFrame, m_pipelines["geometry"].GetPipelineLayout(),
+		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["geometry"].GetPipeline());
+		m_cmdBuffer.bindDescriptorSet(m_pipelines["geometry"].GetPipelineLayout(),
 			&descriptorSets[1], 1);
-		m_cmdBuffer.drawIndexed(m_currentFrame, m_lightingModel.m_mesh->m_indices.size());
+		m_cmdBuffer.drawIndexed(m_lightingModel.m_mesh->m_indices.size());
 
 		// imgui render
 		ImGuiManager::StartFrame();
-		ImGuiManager::Draw(m_cmdBuffer.getCmdBuffer(m_currentFrame));
-		m_cmdBuffer.endRenderPass(m_currentFrame);
+		ImGuiManager::Draw(m_cmdBuffer.getNative());
+		m_cmdBuffer.endRenderPass();
 
-		m_graphicsModule->submit(m_currentFrame, &m_cmdBuffer.getCmdBuffer(m_currentFrame));
+		m_graphicsModule->submit(m_currentFrame, &m_cmdBuffer.getNative());
 		m_graphicsModule->present(m_currentFrame, imageIndex);
 
 		m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -321,10 +321,11 @@ private:
 private:
 	Window m_window;
 	graphics::GraphicsModule* m_graphicsModule;
+	CommandPool* m_cmdPool;
+	CommandBuffer m_cmdBuffer;
 
 	std::unordered_map<std::string, GraphicsPipeline> m_pipelines;
 	std::unordered_map< std::string, DescriptorSet> m_descriptorSets;
-	CommandBuffer m_cmdBuffer;
 	UniformBuffer<InternalLight> m_lightBuffer;
 	UniformBuffer<InternalView> m_passBuffer;
 	Model m_model;

@@ -17,6 +17,7 @@ namespace graphics
 	{
 		uint32_t numberOfPools;
 		VkDescriptorPoolSize* poolSizes;
+		uint32_t numberOfCmdBuffers;
 	};
 
 #define geterGraphicsComponent(className, member) className& get##className() { return member; }
