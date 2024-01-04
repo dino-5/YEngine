@@ -39,7 +39,11 @@ public:
 		querySwapChainProperties();
 		createSwapChain();
 		createSwapChainImageViews();
-		m_renderPass.init(*m_device, m_surfaceFormat.format);
+		PassInfo info;
+		info.imageFormat = m_surfaceFormat.format;
+		info.numberOfColorAttachments = 1;
+		info.numberOfDepthAttachments = 1;
+		m_renderPass.init(*m_device, info);
 		TextureCreateInfo depthInfo{
 			.format = VK_FORMAT_D24_UNORM_S8_UINT,
 			.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,

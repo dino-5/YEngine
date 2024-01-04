@@ -20,6 +20,6 @@ layout(location = 2) out vec3 normal;
 void main() {
     gl_Position = uboPass.proj* uboPass.view * uboObject.model * vec4(inPosition, 1.0);
     position = (uboObject.model * vec4(inPosition, 1.0)).xyz;
-    normal = normalize(( uboObject.model * vec4(inNormal, 1.0f)).xyz);
+    normal = normalize(( uboObject.model * vec4(inNormal, 0.0f)).xyz);
     fragUv = inUv;
 }

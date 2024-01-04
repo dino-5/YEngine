@@ -89,6 +89,8 @@ void Shader::init(std::string path, ShaderType type)
 	m_name = path;
 	m_type = type;
 	VkDevice& device = GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
+	if (path.empty())
+		return;
 	m_shader = CreateShader(path, device, type);
 }
 
@@ -107,8 +109,19 @@ void GraphicsPipeline::init(GraphicsPipelineCreateInfo createInfo)
 {
 	m_createInfo = createInfo;
 	m_device = &GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
-	m_vertexShader.init(createInfo.vertexShader, ShaderType::VERTEX);
-	m_fragmentShader.init(createInfo.fragmentShader, ShaderType::FRAGMENT);
+
+	std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+
+	if (!createInfo.vertexShader.empty())
+	{
+		m_vertexShader.init(createInfo.vertexShader, ShaderType::VERTEX);
+		shaderStages.push_back(m_vertexShader.getShaderStageInfo());
+	}
+	if (!createInfo.fragmentShader.empty())
+	{
+		m_fragmentShader.init(createInfo.fragmentShader, ShaderType::FRAGMENT);
+		shaderStages.push_back(m_fragmentShader.getShaderStageInfo());
+	}
 	if (!m_descriptorSetLayouts.size())
 	{
 		m_descriptorSetLayouts.resize(createInfo.layoutCount);
@@ -116,8 +129,6 @@ void GraphicsPipeline::init(GraphicsPipelineCreateInfo createInfo)
 			m_descriptorSetLayouts[i].init(createInfo.layoutCreateInfo[i]);
 	}
 	
-	VkPipelineShaderStageCreateInfo shaderStages[] = { m_vertexShader.getShaderStageInfo(), m_fragmentShader.getShaderStageInfo() };
-
 	std::vector<VkDynamicState> dynamicStates = {
 		VK_DYNAMIC_STATE_VIEWPORT,
 		VK_DYNAMIC_STATE_SCISSOR
@@ -213,8 +224,8 @@ void GraphicsPipeline::init(GraphicsPipelineCreateInfo createInfo)
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineCreateInfo.stageCount = 2;
-	pipelineCreateInfo.pStages = shaderStages;
+	pipelineCreateInfo.stageCount = shaderStages.size();
+	pipelineCreateInfo.pStages = shaderStages.data();
 	pipelineCreateInfo.pVertexInputState = &vertexInputInfo;
 	pipelineCreateInfo.pInputAssemblyState = &inputAssembly;
 	pipelineCreateInfo.pViewportState = &viewportState;

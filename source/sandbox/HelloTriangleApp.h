@@ -73,6 +73,7 @@ public:
 	static inline HelloTriangleApplication* m_instance = nullptr;
 	HelloTriangleApplication():
 		m_passBuffer(0, ShaderType::VERTEX),
+		m_shadowPassBuffer(0, ShaderType::VERTEX),
 		m_model(1, ShaderType::VERTEX),
 		m_lightingModel(1, ShaderType::VERTEX),
 		m_plane(1, ShaderType::VERTEX),
@@ -122,7 +123,6 @@ private:
 		{
 			m_pipelines["lighting"] = GraphicsPipeline();
 			m_descriptorSets["lightingPass"] = DescriptorSet();
-			m_descriptorSets["lightGeometry"] = DescriptorSet();
 			DescriptorSetLayoutCreateInfo dscSetLayoutCreateInfo = { descBindings, numberOfBindings };
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
@@ -140,6 +140,7 @@ private:
 
 		{
 			m_pipelines["geometry"] = GraphicsPipeline();
+			m_descriptorSets["lightGeometry"] = DescriptorSet();
 			DescriptorSetLayoutCreateInfo dscSetLayoutCreateInfo = { descBindings, 3};
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
@@ -154,9 +155,29 @@ private:
 			);
 		}
 
+		{
+			VkDescriptorSetLayoutBinding descBindings[numberOfBindings] = {
+				m_passBuffer.GetDescriptorSetBinding(), m_model.m_buffer.GetDescriptorSetBinding()
+			};
+			m_pipelines["shadow"] = GraphicsPipeline();
+			m_descriptorSets["shadow"] = DescriptorSet();
+			DescriptorSetLayoutCreateInfo dscSetLayoutCreateInfo = { descBindings, 2};
+			GraphicsPipelineCreateInfo pipelineCreateInfo
+			{
+				.vertexShader = "shaders/shader.vert",
+				.fragmentShader = "",
+				.layoutCreateInfo = &dscSetLayoutCreateInfo,
+				.layoutCount = 1
+			};
+			m_pipelines["shadow"].init(pipelineCreateInfo);
+			m_descriptorSets["shadow"].init(
+				MAX_FRAMES_IN_FLIGHT, m_pipelines["shadow"].getDescriptorSetLayout(0));
+
+		}
+
 		m_passBuffer.m_data.update = [&]()
 		{
-			m_passBuffer.m_data.data.view = m_camera.getView();
+			m_passBuffer.m_data.data.view = m_currentCamera->getView();
 		};
 
 		m_lightBuffer.m_data.update = [&]()
@@ -172,6 +193,8 @@ private:
 	void initVulkan()
 	{
 		m_camera.init(WIDTH / HEIGHT);
+		m_shadowCamera.init(WIDTH / HEIGHT);
+		m_currentCamera = &m_camera;
 		constexpr uint32_t numberOfPools = 2;
 		VkDescriptorPoolSize poolSizes[numberOfPools] = {
 			{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT * 3} ,
@@ -201,9 +224,11 @@ private:
 		m_plane.init("assets/wall.jpg", textureInfo, "plane", "plane");
 		m_passBuffer.init();
 		m_lightBuffer.init();
+		m_shadowPassBuffer.init();
 
 		createPipelines();
 		ImGuiManager::AddButton({ "shader Reload", &m_shaderReload});
+		ImGuiManager::AddButton({ "switch camera", &m_switchCamera});
 
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
@@ -231,6 +256,17 @@ private:
 
 				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
 			}
+
+			{
+				constexpr const uint32_t numberOfDescriptors = 2;
+				VkWriteDescriptorSet descriptors[numberOfDescriptors];
+				auto& descriptorSet = m_descriptorSets["shadow"];
+
+				descriptors[0] = descriptorSet.getWriteDescriptor(i, 0, m_shadowPassBuffer[i]);
+				descriptors[1] = descriptorSet.getWriteDescriptor(i, 1, m_model.getBuffer(i));
+
+				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
+			}
 		}
 	}
 
@@ -248,6 +284,12 @@ private:
 				m_currentFrame = 0;
 				m_shaderReload = false;
 			}
+			if (m_switchCamera)
+			{
+				m_currentCameraIndex = (m_currentCameraIndex + 1) % 2;
+				m_currentCamera = m_currentCameraIndex == 1 ? &m_shadowCamera : &m_camera;
+				m_switchCamera = false;
+			}
 		}
 		vkDeviceWaitIdle(m_graphicsModule->getDevice().getLogicalDevice().getDevice());
 	}
@@ -258,6 +300,8 @@ private:
 		m_lightingModel.update(m_currentFrame);
 		m_passBuffer.update(m_currentFrame);
 		m_lightBuffer.update(m_currentFrame);
+		m_shadowCamera.setPosition(m_lightingModel.m_position);
+		m_shadowCamera.setDirection(-(m_lightingModel.m_position) + m_model.m_position);
 	}
 
 	void drawFrame()
@@ -288,10 +332,13 @@ private:
 		m_cmdBuffer.drawIndexed(m_model.m_mesh->m_indices.size());
 
 		// TODO create descriptor set to contain different uniform object for matrices 
-		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["geometry"].GetPipeline());
-		m_cmdBuffer.bindDescriptorSet(m_pipelines["geometry"].GetPipelineLayout(),
-			&descriptorSets[1], 1);
-		m_cmdBuffer.drawIndexed(m_lightingModel.m_mesh->m_indices.size());
+		if (m_currentCameraIndex != 1)
+		{
+			m_cmdBuffer.bindGraphicsPipeline(m_pipelines["geometry"].GetPipeline());
+			m_cmdBuffer.bindDescriptorSet(m_pipelines["geometry"].GetPipelineLayout(),
+				&descriptorSets[1], 1);
+			m_cmdBuffer.drawIndexed(m_lightingModel.m_mesh->m_indices.size());
+		}
 
 		// imgui render
 		ImGuiManager::StartFrame();
@@ -310,6 +357,7 @@ private:
 		m_plane.release();
 		m_lightBuffer.release();
 		m_passBuffer.release();
+		m_shadowPassBuffer.release();
 		for (auto& pipeline : m_pipelines)
 			pipeline.second.release();
 		ImGuiManager::Release();
@@ -328,11 +376,16 @@ private:
 	std::unordered_map< std::string, DescriptorSet> m_descriptorSets;
 	UniformBuffer<InternalLight> m_lightBuffer;
 	UniformBuffer<InternalView> m_passBuffer;
+	UniformBuffer<InternalView> m_shadowPassBuffer;
 	Model m_model;
 	Model m_lightingModel;
 	Model m_plane;
 	Camera m_camera;
+	Camera m_shadowCamera;
+	Camera* m_currentCamera;
 	uint32_t m_currentFrame = 0;
 	bool m_shaderReload = false;
+	bool m_switchCamera= false;
+	uint32_t m_currentCameraIndex = 0;
 };
 

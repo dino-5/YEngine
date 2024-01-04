@@ -13,8 +13,11 @@ public:
 	void parseKeyInput(GLFWwindow* window, int key, int scancode, int action, int mods);
 	void switchCamera() { m_isActive = !m_isActive; }
 	glm::mat4 getView() { return m_view; }
+	void setPosition(glm::vec3 pos) { m_pos = pos; simpleViewMatrix(); }
+	void setDirection(glm::vec3 dir) { m_direction = dir; simpleViewMatrix(); }
 private:
 	void updateViewMatrix();
+	void simpleViewMatrix();
 private:
 	glm::mat4 m_view;
 	glm::mat4 m_proj;

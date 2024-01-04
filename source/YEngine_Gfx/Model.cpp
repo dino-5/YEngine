@@ -84,8 +84,7 @@ void Mesh::DeleteMesh(std::string name)
 	}
 }
 
-void Model::init(const std::string& pathToPixels, TextureCreateInfo info,
-	std::string name, std::string meshName)
+void Model::init(const std::string& pathToPixels, TextureCreateInfo info, std::string name, std::string meshName)
 {
 	m_name = name;
 	for(auto& texture: m_textures)
@@ -94,7 +93,7 @@ void Model::init(const std::string& pathToPixels, TextureCreateInfo info,
 	m_mesh = Mesh::GetMesh(meshName);
 
 	ImGuiEntry entry;
-	entry.address = &m_position[0];
+	entry.address = &m_position;
 	entry.name = m_name.c_str();
 	entry.type = ImGuiType::FLOAT3;
 	entry.min = -10;

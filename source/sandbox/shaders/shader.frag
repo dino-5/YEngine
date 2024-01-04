@@ -19,5 +19,6 @@ void main() {
     float cosineFactor= dot(lightVector, normal);
     outColor = vec4(lighting.pos, 1.f);
 	//return;
-	outColor = clamp(cosineFactor, 0.f, 1.f) * texture(texSampler, fragUv);
+    vec4 red= vec4(0.23, 0.09, 0.44, 1.0);
+	outColor = clamp(cosineFactor, 0.f, 1.f) *texture(texSampler, fragUv);
 }

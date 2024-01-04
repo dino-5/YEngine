@@ -64,8 +64,7 @@ public:
 		Data data;
 	};
 	Model(uint32_t binding, ShaderType type) :m_buffer(binding, type) {}
-	void init(const std::string& pathToPixels, TextureCreateInfo info,
-		std::string name, std::string meshName);
+	void init(const std::string& pathToPixels, TextureCreateInfo info, std::string name, std::string meshName);
 	void update(uint32_t frame);
 	void release()
 	{

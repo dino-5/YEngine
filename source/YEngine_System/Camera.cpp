@@ -52,8 +52,13 @@ void Camera::updateViewMatrix()
 	m_direction.x = std::cos(m_x) * -std::cos(m_y);
 	m_direction.y = std::sin(m_x) * std::cos(m_y);
 	m_direction.z =  -std::sin(m_y);
+	simpleViewMatrix();
+}
+
+void Camera::simpleViewMatrix()
+{
 	m_direction = glm::normalize(m_direction);
-	glm::vec3 top = glm::cross(glm::cross(m_direction, glm::vec3(0.f, 0.f, 1.f)), m_direction);
+	glm::vec3 top = glm::cross(glm::cross(m_direction, glm::vec3(0.f, 1.f, 1.f)), m_direction);
 	m_view = glm::lookAt(m_pos, m_pos + m_direction, top);
 }
 

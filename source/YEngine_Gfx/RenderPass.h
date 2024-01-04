@@ -1,10 +1,18 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <vector>
+
+struct PassInfo
+{
+	VkFormat imageFormat;
+	uint32_t numberOfColorAttachments;
+	uint32_t numberOfDepthAttachments;
+};
 
 class RenderPass
 {
 public:
-	void init(VkDevice& device, VkFormat imageFormat);
+	void init(VkDevice& device, PassInfo info);
 	void release()
 	{
 		vkDestroyRenderPass(*m_device, m_renderPass, nullptr);
