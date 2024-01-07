@@ -88,7 +88,7 @@ void Model::init(const std::string& pathToPixels, TextureCreateInfo info, std::s
 {
 	m_name = name;
 	for(auto& texture: m_textures)
-		texture.init(pathToPixels, info);
+		texture.initAsTexture(pathToPixels, info);
 
 	m_mesh = Mesh::GetMesh(meshName);
 

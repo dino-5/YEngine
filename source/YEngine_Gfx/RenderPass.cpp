@@ -1,4 +1,5 @@
 #include "RenderPass.h"
+#include "GraphicsModule.h"
 #include <array>
 #include <stdexcept>
 
@@ -24,7 +25,7 @@ VkAttachmentDescription getDepthAttachment()
 	depthAttachment.format = VK_FORMAT_D24_UNORM_S8_UINT;
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -48,9 +49,9 @@ VkAttachmentReference createDepthAttachmentRef(uint32_t attachment)
 	};
 } 
 
-void RenderPass::init(VkDevice& device, PassInfo info)
+void RenderPass::init(PassInfo info)
 {
-	m_device = &device;
+	m_device = &graphics::GraphicsModule::GetInstance()->getDevice().getLogicalDevice().getDevice();
 
 	std::vector<VkAttachmentDescription> attachments = getColorAttachments(info);
 
@@ -89,7 +90,7 @@ void RenderPass::init(VkDevice& device, PassInfo info)
 	renderPassInfo.pDependencies = &dependency;
 
 
-	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS) {
+	if (vkCreateRenderPass(*m_device, &renderPassInfo, nullptr, &m_renderPass) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create render pass!");
 	}
 

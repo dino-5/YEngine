@@ -1,7 +1,8 @@
 #version 450
 
 layout (binding=0) uniform PassUniformBuffer{
-    mat4 view;
+    mat4 cameraView;
+    mat4 lightView;
     mat4 proj;
 }uboPass;
 
@@ -15,11 +16,13 @@ layout(location = 2) in vec2 inUv;
 
 layout(location = 0) out vec2 fragUv;
 layout(location = 1) out vec3 position;
-layout(location = 2) out vec3 normal;
+layout(location = 2) out vec4 lightPosition;
+layout(location = 3) out vec3 normal;
 
 void main() {
-    gl_Position = uboPass.proj* uboPass.view * uboObject.model * vec4(inPosition, 1.0);
+    gl_Position = uboPass.proj* uboPass.cameraView * uboObject.model * vec4(inPosition, 1.0);
     position = (uboObject.model * vec4(inPosition, 1.0)).xyz;
+    lightPosition = uboPass.proj * uboPass.lightView*(uboObject.model * vec4(inPosition, 1.0));
     normal = normalize(( uboObject.model * vec4(inNormal, 0.0f)).xyz);
     fragUv = inUv;
 }

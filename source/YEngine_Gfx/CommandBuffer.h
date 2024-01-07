@@ -12,8 +12,12 @@ public:
 	void endSingleTimeCommands(VkQueue queue);
 	void bindGraphicsPipeline(VkPipeline& pipeline);
 	void beginRenderPass(VkRenderPassBeginInfo info);
-	void beginCmdBuffer(VkCommandBufferBeginInfo beginInfo)
+	void beginCmdBuffer()
 	{
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0; // Optional
+		beginInfo.pInheritanceInfo = nullptr; // Optional
 		if (vkBeginCommandBuffer(m_cmdBuffer, &beginInfo) != VK_SUCCESS)
 			throw std::runtime_error("failed to begin recording command buffer!");
 	}
@@ -25,7 +29,6 @@ public:
 	void endRenderPass()
 	{
 		vkCmdEndRenderPass(m_cmdBuffer);
-		endCmdBuffer();
 	}
 	void setViewport(VkViewport& viewport, uint32_t index) {
 		vkCmdSetViewport(m_cmdBuffer, 0, 1, &viewport);

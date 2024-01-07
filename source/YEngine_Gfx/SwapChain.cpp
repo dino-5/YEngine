@@ -95,7 +95,7 @@ void SwapChain::querySwapChainProperties()
 	s_scissorRect.offset = { 0, 0 };
 	s_scissorRect.extent = m_extent;
 	
-	clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f};
 	clearValues[1].depthStencil = { 1.0f, 0 };
 	 
 	m_imageCount = m_swapChainSupport.capabilities.minImageCount + 1;

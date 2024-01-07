@@ -60,9 +60,15 @@ struct TextureImage
 {
 	Texture texture;
 	Sampler sampler;
-	void init(const std::string& path, TextureCreateInfo info)
+	void initAsTexture(const std::string& path, TextureCreateInfo info)
 	{
 		texture.initAsTexture(path, info);
+		sampler.init();
+	}
+
+	void initAsDepthBuffer(uint32_t width, uint32_t height, TextureCreateInfo textureInfo)
+	{
+		texture.initAsDepthBuffer(width, height, textureInfo);
 		sampler.init();
 	}
 	void release()

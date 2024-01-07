@@ -30,6 +30,8 @@
 #include "imgui/backends/imgui_impl_glfw.h"
 #include "imgui/backends/imgui_impl_vulkan.h"
 
+#include "ShadowPass.h"
+
 void FrameBufferResizeCallback(GLFWwindow* window, int width, int height);
 void cursorPositionCallback(GLFWwindow* window, double xpos, double ypos);
 void keyInputCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -39,6 +41,24 @@ VkDescriptorSetLayoutBinding getSamplerLayoutBinding();
 constexpr uint32_t numberOfLayouts = 2;
 
 struct InternalView
+{
+	struct Data
+	{
+		glm::mat4 cameraView;
+		glm::mat4 lightView;
+		glm::mat4 proj;
+	};
+	Data data;
+	void init()
+	{
+		data.proj = glm::perspective(glm::radians(45.0f), 
+			graphics::GraphicsModule::GetInstance()->getSwapChain().getAspectRatio(), 0.1f, 100.0f);
+		data.proj[1][1] *= -1;
+	}
+	std::function<void()> update;
+};
+
+struct InternalViewShadow
 {
 	struct Data
 	{
@@ -115,10 +135,10 @@ private:
 	}
 	void createPipelines()
 	{
-		constexpr uint32_t numberOfBindings = 4;
+		constexpr uint32_t numberOfBindings = 5;
 		VkDescriptorSetLayoutBinding descBindings[numberOfBindings] = {
 			m_passBuffer.GetDescriptorSetBinding(), m_model.m_buffer.GetDescriptorSetBinding(),
-			getSamplerLayoutBinding(), 	m_lightBuffer.GetDescriptorSetBinding()
+			getSamplerLayoutBinding(), 	m_lightBuffer.GetDescriptorSetBinding(), m_shadowPass.getDescriptorSetBinding()
 		};
 		{
 			m_pipelines["lighting"] = GraphicsPipeline();
@@ -164,7 +184,7 @@ private:
 			DescriptorSetLayoutCreateInfo dscSetLayoutCreateInfo = { descBindings, 2};
 			GraphicsPipelineCreateInfo pipelineCreateInfo
 			{
-				.vertexShader = "shaders/shader.vert",
+				.vertexShader = "shaders/shadowVertex.glsl",
 				.fragmentShader = "",
 				.layoutCreateInfo = &dscSetLayoutCreateInfo,
 				.layoutCount = 1
@@ -177,12 +197,17 @@ private:
 
 		m_passBuffer.m_data.update = [&]()
 		{
-			m_passBuffer.m_data.data.view = m_currentCamera->getView();
+			m_passBuffer.m_data.data.cameraView = m_currentCamera->getView();
+			m_passBuffer.m_data.data.lightView = m_shadowCamera.getView();
 		};
 
 		m_lightBuffer.m_data.update = [&]()
 		{
 			m_lightBuffer.m_data.data.position = m_lightingModel.m_position;
+		};
+		m_shadowPassBuffer.m_data.update = [&]()
+		{
+			m_shadowPassBuffer.m_data.data.view = m_shadowCamera.getView();
 		};
 	}
 	void reloadPipelines()
@@ -225,6 +250,7 @@ private:
 		m_passBuffer.init();
 		m_lightBuffer.init();
 		m_shadowPassBuffer.init();
+		m_shadowPass.init(WIDTH, HEIGHT);
 
 		createPipelines();
 		ImGuiManager::AddButton({ "shader Reload", &m_shaderReload});
@@ -233,7 +259,7 @@ private:
 		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
 		{
 			{
-				constexpr uint32_t numberOfDescriptors= 4;
+				constexpr uint32_t numberOfDescriptors= 5;
 				VkWriteDescriptorSet descriptors[numberOfDescriptors];
 				auto& descriptorSet = m_descriptorSets["lightingPass"];
 
@@ -241,6 +267,7 @@ private:
 				descriptors[1] = descriptorSet.getWriteDescriptor(i, 1, m_model.getBuffer(i));
 				descriptors[2] = descriptorSet.getWriteDescriptor(i, 2, m_model.getImage(i));
 				descriptors[3] = descriptorSet.getWriteDescriptor(i, 3, m_lightBuffer[i]);
+				descriptors[4] = descriptorSet.getWriteDescriptor(i, 4, m_shadowPass[i]);
 
 				descriptorSet.updateDescriptors(descriptors, numberOfDescriptors);
 			}
@@ -302,6 +329,7 @@ private:
 		m_lightBuffer.update(m_currentFrame);
 		m_shadowCamera.setPosition(m_lightingModel.m_position);
 		m_shadowCamera.setDirection(-(m_lightingModel.m_position) + m_model.m_position);
+		m_shadowPassBuffer.update(m_currentFrame);
 	}
 
 	void drawFrame()
@@ -312,10 +340,24 @@ private:
 		if (imageIndexT == -1)
 			return;
 		uint32_t imageIndex = static_cast<uint32_t>(imageIndexT);
+		VkDeviceSize offsets[] = { 0 };
 
 		m_graphicsModule->resetFences(m_currentFrame);
 		m_cmdBuffer = (*m_cmdPool)[m_currentFrame];
 		m_cmdBuffer.reset();
+		m_cmdBuffer.beginCmdBuffer();
+
+		m_cmdBuffer.beginRenderPass(m_shadowPass.getRenderPassBeginInfo(m_currentFrame));
+		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["shadow"].GetPipeline());
+		m_cmdBuffer.bindDescriptorSet(m_pipelines["shadow"].GetPipelineLayout(),
+			&m_descriptorSets["shadow"].getDescriptorSet(m_currentFrame), 1);
+		m_cmdBuffer.setViewport(SwapChain::getViewport(), m_currentFrame);
+		m_cmdBuffer.setScissorRect(SwapChain::getScissorRect(), m_currentFrame);
+		m_cmdBuffer.bindVertexBuffers(&m_model.m_mesh->m_vertexBuffer.getBuffer(), offsets, 1);
+		m_cmdBuffer.bindIndexBuffers(m_model.m_mesh->m_indexBuffer.getBuffer());
+		m_cmdBuffer.drawIndexed(m_model.m_mesh->m_indices.size());
+		m_cmdBuffer.endRenderPass();
+
 		m_cmdBuffer.beginRenderPass(m_graphicsModule->getSwapChain().getRenderPassBeginInfo(imageIndex));
 		m_cmdBuffer.bindGraphicsPipeline(m_pipelines["lighting"].GetPipeline());
 		VkDescriptorSet descriptorSets[] = {
@@ -326,7 +368,6 @@ private:
 			descriptorSets, 1);
 		m_cmdBuffer.setViewport(SwapChain::getViewport(), m_currentFrame);
 		m_cmdBuffer.setScissorRect(SwapChain::getScissorRect(), m_currentFrame);
-		VkDeviceSize offsets[] = { 0 };
 		m_cmdBuffer.bindVertexBuffers(&m_model.m_mesh->m_vertexBuffer.getBuffer(), offsets, 1);
 		m_cmdBuffer.bindIndexBuffers(m_model.m_mesh->m_indexBuffer.getBuffer());
 		m_cmdBuffer.drawIndexed(m_model.m_mesh->m_indices.size());
@@ -344,6 +385,7 @@ private:
 		ImGuiManager::StartFrame();
 		ImGuiManager::Draw(m_cmdBuffer.getNative());
 		m_cmdBuffer.endRenderPass();
+		m_cmdBuffer.endCmdBuffer();
 
 		m_graphicsModule->submit(m_currentFrame, &m_cmdBuffer.getNative());
 		m_graphicsModule->present(m_currentFrame, imageIndex);
@@ -358,6 +400,7 @@ private:
 		m_lightBuffer.release();
 		m_passBuffer.release();
 		m_shadowPassBuffer.release();
+		m_shadowPass.release();
 		for (auto& pipeline : m_pipelines)
 			pipeline.second.release();
 		ImGuiManager::Release();
@@ -376,12 +419,13 @@ private:
 	std::unordered_map< std::string, DescriptorSet> m_descriptorSets;
 	UniformBuffer<InternalLight> m_lightBuffer;
 	UniformBuffer<InternalView> m_passBuffer;
-	UniformBuffer<InternalView> m_shadowPassBuffer;
+	UniformBuffer<InternalViewShadow> m_shadowPassBuffer;
 	Model m_model;
 	Model m_lightingModel;
 	Model m_plane;
 	Camera m_camera;
 	Camera m_shadowCamera;
+	ShadowPass m_shadowPass;
 	Camera* m_currentCamera;
 	uint32_t m_currentFrame = 0;
 	bool m_shaderReload = false;

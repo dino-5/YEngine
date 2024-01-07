@@ -10,7 +10,7 @@ void CommandBuffer::initAsSingleTimeCmdBuffer()
 	VkCommandBufferBeginInfo beginInfo{};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	beginCmdBuffer(beginInfo);
+	beginCmdBuffer();
 }
 
 void CommandBuffer::endSingleTimeCommands(VkQueue queue) 
@@ -33,12 +33,6 @@ void CommandBuffer::endSingleTimeCommands(VkQueue queue)
 
 void CommandBuffer::beginRenderPass(VkRenderPassBeginInfo info)
 {
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = 0; // Optional
-	beginInfo.pInheritanceInfo = nullptr; // Optional
-
-	beginCmdBuffer(beginInfo);
 	vkCmdBeginRenderPass(m_cmdBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
 }
 

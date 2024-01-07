@@ -12,7 +12,7 @@ struct PassInfo
 class RenderPass
 {
 public:
-	void init(VkDevice& device, PassInfo info);
+	void init(PassInfo info);
 	void release()
 	{
 		vkDestroyRenderPass(*m_device, m_renderPass, nullptr);
